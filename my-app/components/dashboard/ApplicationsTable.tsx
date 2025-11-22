@@ -3,54 +3,48 @@
 import { useState, useEffect } from "react";
 
 interface Application {
-  id: string;
-  studentId: string;
-  studentName: string;
-  status: "pending" | "approved" | "rejected";
-  submittedAt: string;
-  email: string;
+  id: number;
+  student_id: number;
+  year: number;
+  major: string;
+  gender: string;
+  room_preference: string;
+  additional_info: string;
+  status: string;
+  submitted_at: string;
+  updated_at: string;
 }
 
 export default function ApplicationsTable() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Mock data - replace with actual API call
-  const mockApplications: Application[] = [
-    {
-      id: "1",
-      studentId: "123456",
-      studentName: "John Doe",
-      email: "john.doe@nu.edu.kz",
-      status: "pending",
-      submittedAt: "2024-01-15T10:30:00Z",
-    },
-    {
-      id: "2",
-      studentId: "123457",
-      studentName: "Jane Smith",
-      email: "jane.smith@nu.edu.kz",
-      status: "approved",
-      submittedAt: "2024-01-14T14:20:00Z",
-    },
-    {
-      id: "3",
-      studentId: "123458",
-      studentName: "Bob Johnson",
-      email: "bob.johnson@nu.edu.kz",
-      status: "rejected",
-      submittedAt: "2024-01-13T09:15:00Z",
-    },
-  ];
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    // Simulate API call
     const fetchApplications = async () => {
       try {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        setApplications(mockApplications);
+        const token = localStorage.getItem("token");
+        if (!token) {
+          setError("Please log in first");
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await fetch("http://localhost:8080/applications/my", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch applications: ${response.status}`);
+        }
+
+        const apps = await response.json();
+        setApplications(apps);
       } catch (error) {
         console.error("Error fetching applications:", error);
+        setError("Failed to load applications. Please try again.");
       } finally {
         setIsLoading(false);
       }
@@ -71,7 +65,13 @@ export default function ApplicationsTable() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   if (isLoading) {
@@ -82,11 +82,27 @@ export default function ApplicationsTable() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-md p-4">
+        <div className="flex items-center">
+          <div className="flex-shrink-0">
+            <span className="text-red-600">⚠️</span>
+          </div>
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-red-800">Error</h3>
+            <p className="text-sm text-red-700 mt-1">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white shadow-md rounded-lg overflow-hidden">
       <div className="px-6 py-4 border-b border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900">
-          Housing Applications ({applications.length})
+          My Applications ({applications.length})
         </h3>
       </div>
 
@@ -95,13 +111,16 @@ export default function ApplicationsTable() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Student ID
+                ID
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
+                Year
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
+                Major
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Room Preference
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
@@ -109,22 +128,22 @@ export default function ApplicationsTable() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Submitted
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {applications.map((application) => (
               <tr key={application.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {application.studentId}
+                  #{application.id}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {application.studentName}
+                  {application.year}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {application.major}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                  {application.email}
+                  {application.room_preference || "Not specified"}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span
@@ -137,18 +156,7 @@ export default function ApplicationsTable() {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {formatDate(application.submittedAt)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button className="text-blue-600 hover:text-blue-900 mr-3">
-                    View
-                  </button>
-                  <button className="text-green-600 hover:text-green-900 mr-3">
-                    Approve
-                  </button>
-                  <button className="text-red-600 hover:text-red-900">
-                    Reject
-                  </button>
+                  {formatDate(application.submitted_at)}
                 </td>
               </tr>
             ))}
@@ -158,7 +166,11 @@ export default function ApplicationsTable() {
 
       {applications.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-500">No applications found.</p>
+          <div className="text-gray-400 text-6xl mb-4">📋</div>
+          <p className="text-gray-500 text-lg mb-2">No applications found</p>
+          <p className="text-gray-400 text-sm">
+            Submit your first housing application to get started.
+          </p>
         </div>
       )}
     </div>

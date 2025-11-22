@@ -9,11 +9,46 @@ import Card from "@/components/ui/Card";
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login attempt:", { email, password });
-    // TODO: Connect to backend API
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("http://localhost:8080/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+
+        // Redirect based on role
+        const userRole = data.user.role;
+        if (userRole === "admin") {
+          window.location.href = "/dashboard/admin";
+        } else if (userRole === "housing") {
+          window.location.href = "/dashboard/housing";
+        } else {
+          window.location.href = "/dashboard/student";
+        }
+      } else {
+        setError("Login failed: " + (data.error || "Invalid credentials"));
+      }
+    } catch (error) {
+      setError("Network error: Could not connect to server");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -34,6 +69,19 @@ export default function LoginForm() {
       </div>
 
       <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <span className="text-red-600">⚠️</span>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4">
           <Input
             id="email"
@@ -59,33 +107,9 @@ export default function LoginForm() {
           />
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <input
-              id="remember-me"
-              name="remember-me"
-              type="checkbox"
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label
-              htmlFor="remember-me"
-              className="ml-2 block text-sm text-gray-900"
-            >
-              Remember me
-            </label>
-          </div>
-
-          <div className="text-sm">
-            <a
-              href="#"
-              className="font-medium text-blue-600 hover:text-blue-500"
-            >
-              Forgot your password?
-            </a>
-          </div>
-        </div>
-
-        <Button type="submit">Sign in</Button>
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? "Signing in..." : "Sign in"}
+        </Button>
       </form>
     </Card>
   );
