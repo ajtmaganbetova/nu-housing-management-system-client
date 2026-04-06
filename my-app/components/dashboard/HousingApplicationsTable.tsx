@@ -152,7 +152,7 @@ export default function HousingApplicationsTable() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-1 text-sm"
+            className="border border-gray-300 rounded-md px-3 py-1 text-sm text-gray-900"
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>

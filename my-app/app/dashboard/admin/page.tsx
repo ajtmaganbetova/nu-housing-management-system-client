@@ -163,13 +163,13 @@ export default function AdminDashboard() {
             </p>
             <button
               className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 mr-3"
-              onClick={() => alert("User management feature")}
+              onClick={() => router.push("/dashboard/admin/users")}
             >
               View All Users
             </button>
             <button
               className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
-              onClick={() => alert("Create user feature")}
+              onClick={() => router.push("/dashboard/admin/users/create")}
             >
               Create User
             </button>
@@ -184,13 +184,13 @@ export default function AdminDashboard() {
             </p>
             <button
               className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 mr-3"
-              onClick={() => alert("System logs feature")}
+              onClick={() => router.push("/dashboard/admin/logs")}
             >
               View Logs
             </button>
             <button
               className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
-              onClick={() => alert("Settings feature")}
+              onClick={() => router.push("/dashboard/admin/settings")}
             >
               System Settings
             </button>
@@ -204,12 +204,18 @@ export default function AdminDashboard() {
               Administrative database functions and maintenance.
             </p>
             <div className="space-x-3">
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 mr-3">
-                Backup Database
-              </button>
-              <button className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700">
-                System Maintenance
-              </button>
+              <button
+  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 mr-3"
+  onClick={() => router.push("/dashboard/admin/backup")}
+>
+  Backup Database
+</button>
+             <button
+  className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
+  onClick={() => router.push("/dashboard/admin/maintenance")}
+>
+  System Maintenance
+</button>
             </div>
           </div>
         </div>

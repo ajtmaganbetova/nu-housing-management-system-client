@@ -187,7 +187,7 @@ export default function ApplicationForm() {
               id="gender"
               name="gender"
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
               value={formData.gender}
               onChange={handleChange}
             >
@@ -227,7 +227,7 @@ export default function ApplicationForm() {
             id="additionalInfo"
             name="additionalInfo"
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
             placeholder="Any special requirements or preferences..."
             value={formData.additionalInfo}
             onChange={handleChange}

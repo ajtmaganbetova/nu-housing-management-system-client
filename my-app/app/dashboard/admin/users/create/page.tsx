@@ -1,0 +1,171 @@
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+export default function CreateUserPage() {
+  const router = useRouter();
+
+  const [form, setForm] = useState({
+    nu_id: "",
+    email: "",
+    phone: "",
+    role_id: 1,
+    password: "",
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const submitForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await fetch("http://localhost:8080/admin/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(form),
+      });
+
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || "Failed to create user");
+      }
+
+      setSuccess("User created successfully!");
+      setTimeout(() => router.push("/dashboard/admin/users"), 1200);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      setError(err.message || "Error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 py-10">
+      <div className="max-w-xl mx-auto bg-white rounded-xl shadow p-8 border border-slate-200">
+        <h1 className="text-2xl font-bold mb-6 text-slate-900">
+          Create New User
+        </h1>
+
+        {/* Success */}
+        {success && (
+          <div className="mb-4 p-3 rounded-md bg-green-100 text-green-700 border border-green-300">
+            {success}
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="mb-4 p-3 rounded-md bg-red-100 text-red-700 border border-red-300">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={submitForm} className="space-y-5">
+          {/* NU ID */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              NU ID
+            </label>
+            <input
+              name="nu_id"
+              type="text"
+              required
+              value={form.nu_id}
+              onChange={handleChange}
+              placeholder="e.g., 20250001"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Email
+            </label>
+            <input
+              name="email"
+              type="email"
+              required
+              value={form.email}
+              onChange={handleChange}
+              placeholder="example@nu.edu.kz"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2"
+            />
+          </div>
+
+          {/* Phone */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Phone
+            </label>
+            <input
+              name="phone"
+              type="text"
+              value={form.phone}
+              onChange={handleChange}
+              placeholder="+77001234567"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2"
+            />
+          </div>
+
+          {/* Role */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Role
+            </label>
+            <select
+              name="role_id"
+              value={form.role_id}
+              onChange={handleChange}
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white text-gray-900"
+            >
+              <option value={1}>Student</option>
+              <option value={2}>Housing Staff</option>
+              <option value={3}>Admin</option>
+            </select>
+          </div>
+
+          {/* Password */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Password
+            </label>
+            <input
+              name="password"
+              type="password"
+              required
+              value={form.password}
+              onChange={handleChange}
+              placeholder="Enter password"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2"
+            />
+          </div>
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg"
+          >
+            {loading ? "Creating..." : "Create User"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
