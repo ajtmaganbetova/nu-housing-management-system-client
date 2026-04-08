@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Card from "@/components/ui/Card";
 
 export default function SignupForm() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -14,6 +16,9 @@ export default function SignupForm() {
     password: "",
     confirmPassword: "",
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -22,10 +27,81 @@ export default function SignupForm() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Signup attempt:", formData);
-    // TODO: Connect to backend API
+    setError("");
+    setSuccess("");
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const registerResponse = await fetch("http://localhost:8080/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
+          email: formData.email.trim(),
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+          role: "student",
+        }),
+      });
+
+      const registerData = await registerResponse.json();
+
+      if (!registerResponse.ok) {
+        throw new Error(registerData.error || "Failed to create account");
+      }
+
+      const loginResponse = await fetch("http://localhost:8080/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email.trim(),
+          password: formData.password,
+        }),
+      });
+
+      const loginData = await loginResponse.json();
+
+      if (!loginResponse.ok || !loginData.token || !loginData.user) {
+        setSuccess("Account created successfully. Redirecting to sign in...");
+        setTimeout(() => router.push("/auth/login"), 1200);
+        return;
+      }
+
+      localStorage.setItem("token", loginData.token);
+      localStorage.setItem("user", JSON.stringify(loginData.user));
+      setSuccess("Account created successfully. Redirecting...");
+
+      const userRole = loginData.user.role;
+      const dashboardPath =
+        userRole === "admin"
+          ? "/dashboard/admin"
+          : userRole === "housing"
+            ? "/dashboard/housing"
+            : "/dashboard/student";
+
+      setTimeout(() => router.push(dashboardPath), 1200);
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Could not create account. Check if the backend is running."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -46,6 +122,18 @@ export default function SignupForm() {
       </div>
 
       <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
+        {success && (
+          <div className="bg-green-50 border border-green-200 rounded-md p-4">
+            <p className="text-sm text-green-700">{success}</p>
+          </div>
+        )}
+
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Input
@@ -125,7 +213,9 @@ export default function SignupForm() {
           </label>
         </div>
 
-        <Button type="submit">Create Account</Button>
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? "Creating Account..." : "Create Account"}
+        </Button>
       </form>
     </Card>
   );
