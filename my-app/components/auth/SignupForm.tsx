@@ -37,6 +37,11 @@ export default function SignupForm() {
       return;
     }
 
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -58,7 +63,10 @@ export default function SignupForm() {
       const registerData = await registerResponse.json();
 
       if (!registerResponse.ok) {
-        throw new Error(registerData.error || "Failed to create account");
+        const message = [registerData.error, registerData.details]
+          .filter(Boolean)
+          .join(": ");
+        throw new Error(message || "Failed to create account");
       }
 
       const loginResponse = await fetch("http://localhost:8080/auth/login", {
@@ -179,6 +187,7 @@ export default function SignupForm() {
             label="Password"
             autoComplete="new-password"
             required
+            minLength={6}
             placeholder="Password"
             value={formData.password}
             onChange={handleChange}
