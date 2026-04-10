@@ -2,10 +2,16 @@
 
 import ApplicationForm from "@/components/application/ApplicationForm";
 import ApplicationsTable from "@/components/dashboard/ApplicationsTable";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 export default function StudentDashboard() {
   const [activeTab, setActiveTab] = useState<"apply" | "applications">("apply");
+  const [showContact, setShowContact] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshKey(k => k + 1);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -82,7 +88,10 @@ export default function StudentDashboard() {
                   >
                     View Application History
                   </button>
-                  <button className="w-full bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 transition duration-200">
+                  <button
+                    onClick={() => setShowContact(true)}
+                    className="w-full bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 transition duration-200"
+                  >
                     Contact Housing Office
                   </button>
                 </div>
@@ -98,10 +107,89 @@ export default function StudentDashboard() {
 
         {activeTab === "applications" && (
           <div>
-            <ApplicationsTable />
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={handleRefresh}
+                className="flex items-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200 text-sm font-medium"
+              >
+                🔄 Refresh
+              </button>
+            </div>
+            <ApplicationsTable key={refreshKey} />
           </div>
         )}
       </div>
+
+      {/* Contact Modal */}
+      {showContact && (
+        <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Contact Housing Office</h2>
+              <button
+                onClick={() => setShowContact(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-start space-x-3">
+                <span className="text-blue-600 mt-1">📧</span>
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Email</p>
+                  <a href="mailto:student_housing@nu.edu.kz" className="text-blue-600 hover:underline">student_housing@nu.edu.kz</a>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <span className="text-blue-600 mt-1">🏢</span>
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Office</p>
+                  <p className="text-gray-900">Block 24, Office 050</p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <span className="text-blue-600 mt-1">🕐</span>
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Working Hours</p>
+                  <p className="text-gray-900">10:00 – 18:00</p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <span className="text-blue-600 mt-1">📞</span>
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Phone Numbers</p>
+                  <div className="space-y-1 mt-1">
+                    <div>
+                      <a href="tel:+77172706471" className="text-blue-600 hover:underline">
+                        8(7172) 70-6471
+                      </a>
+                      <span className="text-gray-600 text-sm"> — Yerzhan Kani</span>
+                    </div>
+                    <div>
+                      <a href="tel:+77172708983" className="text-blue-600 hover:underline">
+                        8(7172) 70-8983
+                      </a>
+                      <span className="text-gray-600 text-sm"> — Samal Tastambekova</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowContact(false)}
+              className="mt-6 w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

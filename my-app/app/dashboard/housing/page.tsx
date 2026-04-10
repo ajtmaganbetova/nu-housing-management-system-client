@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import HousingApplicationsTable from '@/components/dashboard/HousingApplicationsTable';
 
 export default function HousingDashboard() {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -15,52 +16,70 @@ export default function HousingDashboard() {
   });
   const router = useRouter();
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) return;
       const response = await fetch('http://localhost:8080/housing/applications', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
-      
       if (response.ok) {
-        const apps = await response.json();
+        const apps = await response.json() || [];
         setStats({
           total: apps.length,
-          pending: apps.filter((app: { status: string; }) => app.status === 'pending').length,
-          approved: apps.filter((app: { status: string; }) => app.status === 'approved').length,
-          rejected: apps.filter((app: { status: string; }) => app.status === 'rejected').length
+          pending: apps.filter((app: { status: string }) => app.status === 'pending').length,
+          approved: apps.filter((app: { status: string }) => app.status === 'approved').length,
+          rejected: apps.filter((app: { status: string }) => app.status === 'rejected').length
         });
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
-  };
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    fetchStats();
+    setRefreshKey(k => k + 1);
+  }, [fetchStats]);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuth = () => {
       const userData = localStorage.getItem('user');
-      
-      if (!userData) {
+      const token = localStorage.getItem('token');
+
+      if (!userData || !token) {
         router.push('/auth/login');
         return;
       }
 
-      const user = JSON.parse(userData);
-      
-      if (user.role !== 'housing') {
-        router.push('/dashboard/student');
+      let parsedUser;
+      try {
+        parsedUser = JSON.parse(userData);
+      } catch {
+        router.push('/auth/login');
         return;
       }
 
-      setUser(user);
-      await fetchStats();
-      setIsLoading(false);
+      if (parsedUser.role !== 'housing') {
+        router.push('/auth/login');
+        return;
+      }
+
+      setUser(parsedUser);
+      fetchStats().then(() => setIsLoading(false));
     };
 
     checkAuth();
-  }, [router]);
+  }, [router, fetchStats]);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchStats();
+      setRefreshKey(k => k + 1);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchStats]);
 
   if (isLoading) {
     return (
@@ -76,21 +95,27 @@ export default function HousingDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Housing Staff Dashboard</h1>
-          <p className="mt-2 text-gray-600">
-            Welcome, Housing Staff! Review and manage student applications.
-          </p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Housing Staff Dashboard</h1>
+            <p className="mt-2 text-gray-600">
+              Welcome, Housing Staff! Review and manage student applications.
+            </p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            className="flex items-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200 text-sm font-medium"
+          >
+            🔄 Refresh
+          </button>
         </div>
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white shadow rounded-lg p-6">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">📋</span>
-                </div>
+              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-bold">📋</span>
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Applications</p>
@@ -101,10 +126,8 @@ export default function HousingDashboard() {
 
           <div className="bg-white shadow rounded-lg p-6">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">⏳</span>
-                </div>
+              <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-bold">⏳</span>
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Pending Review</p>
@@ -115,10 +138,8 @@ export default function HousingDashboard() {
 
           <div className="bg-white shadow rounded-lg p-6">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">✅</span>
-                </div>
+              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-bold">✅</span>
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Approved</p>
@@ -129,10 +150,8 @@ export default function HousingDashboard() {
 
           <div className="bg-white shadow rounded-lg p-6">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">❌</span>
-                </div>
+              <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-bold">❌</span>
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Rejected</p>
@@ -142,8 +161,7 @@ export default function HousingDashboard() {
           </div>
         </div>
 
-        {/* Applications Table Component */}
-        <HousingApplicationsTable />
+        <HousingApplicationsTable key={refreshKey} onStatsUpdate={fetchStats} />
       </div>
     </div>
   );
