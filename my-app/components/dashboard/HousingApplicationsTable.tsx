@@ -8,7 +8,6 @@ interface Application {
   year: number;
   major: string;
   gender: string;
-  room_preference: string;
   additional_info: string;
   status: string;
   submitted_at: string;
@@ -196,8 +195,7 @@ function ApplicationCard({
               <InfoRow label="School" value={info["School"] || application.major} />
               <InfoRow label="Level" value={info["Level"]} />
               <InfoRow label="Major" value={info["Major"]} />
-              <InfoRow label="Room Preference" value={info["Room Preference"] || application.room_preference} />
-              <InfoRow label="Year" value={String(application.year)} />
+              <InfoRow label="Year" value={info["Year of Study"]} />
             </div>
           </div>
 
@@ -209,6 +207,15 @@ function ApplicationCard({
               <InfoRow label="Astana resident" value={info["Astana resident"]} />
             </div>
           </div>
+
+          {info["Preferred Roommate"] && (
+            <div>
+              <h4 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Preferences</h4>
+              <div className="space-y-2">
+                <InfoRow label="Preferred Roommate" value={info["Preferred Roommate"]} />
+              </div>
+            </div>
+          )}
 
           {info["Comments"] && (
             <div>

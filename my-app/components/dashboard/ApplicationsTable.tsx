@@ -8,7 +8,6 @@ interface Application {
   year: number;
   major: string;
   gender: string;
-  room_preference: string;
   additional_info: string;
   status: string;
   submitted_at: string;
@@ -109,7 +108,6 @@ function ApplicationCard({ application }: { application: Application }) {
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      {/* Header - always visible */}
       <div
         className="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-gray-50 transition"
         onClick={handleExpand}
@@ -131,11 +129,8 @@ function ApplicationCard({ application }: { application: Application }) {
         </div>
       </div>
 
-      {/* Expanded Details */}
       {expanded && (
         <div className="border-t border-gray-200 px-6 py-5 space-y-6 bg-gray-50">
-
-          {/* Status Banner */}
           {application.status === "rejected" && application.rejected_reason && (
             <div className="rounded-md bg-red-50 border border-red-200 p-3">
               <p className="text-sm font-medium text-red-800">Rejection Reason:</p>
@@ -148,7 +143,6 @@ function ApplicationCard({ application }: { application: Application }) {
             </div>
           )}
 
-          {/* Student Information */}
           <div>
             <h4 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Student Information</h4>
             <div className="space-y-2">
@@ -164,19 +158,16 @@ function ApplicationCard({ application }: { application: Application }) {
             </div>
           </div>
 
-          {/* Academic Information */}
           <div>
             <h4 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Academic Information</h4>
             <div className="space-y-2">
               <InfoRow label="School" value={info["School"] || application.major} />
               <InfoRow label="Level" value={info["Level"]} />
               <InfoRow label="Major" value={info["Major"]} />
-              <InfoRow label="Room Preference" value={info["Room Preference"] || application.room_preference} />
-              <InfoRow label="Year" value={String(application.year)} />
+              <InfoRow label="Year" value={info["Year of Study"]} />
             </div>
           </div>
 
-          {/* Housing Questions */}
           <div>
             <h4 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Housing Questions</h4>
             <div className="space-y-2">
@@ -186,7 +177,15 @@ function ApplicationCard({ application }: { application: Application }) {
             </div>
           </div>
 
-          {/* Comments */}
+          {info["Preferred Roommate"] && (
+            <div>
+              <h4 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Preferences</h4>
+              <div className="space-y-2">
+                <InfoRow label="Preferred Roommate" value={info["Preferred Roommate"]} />
+              </div>
+            </div>
+          )}
+
           {info["Comments"] && (
             <div>
               <h4 className="text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Comments</h4>
@@ -194,7 +193,6 @@ function ApplicationCard({ application }: { application: Application }) {
             </div>
           )}
 
-          {/* Documents */}
           <div>
             <h4 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide">Submitted Documents</h4>
             {docsLoading ? (
@@ -209,15 +207,13 @@ function ApplicationCard({ application }: { application: Application }) {
                       <span className="text-red-500">📄</span>
                       <span className="text-sm text-gray-700">{docTypeLabels[doc.type] || doc.type}</span>
                     </div>
-
-             <a href={doc.download_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline font-medium">Download</a>
+                    <a href={doc.download_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline font-medium">Download</a>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Timestamps */}
           <div className="pt-2 border-t border-gray-200 flex gap-6 text-xs text-gray-400">
             <span>Submitted: {formatDate(application.submitted_at)}</span>
             <span>Last Updated: {formatDate(application.updated_at)}</span>

@@ -9,7 +9,7 @@ export default function CreateUserPage() {
     nu_id: "",
     email: "",
     phone: "",
-    role_id: 1,
+    role: "housing",
     password: "",
   });
 
@@ -30,7 +30,7 @@ export default function CreateUserPage() {
     try {
       const token = localStorage.getItem("token");
 
-      const res = await fetch("http://localhost:8080/admin/users", {
+      const res = await fetch("http://localhost:8080/admin/create-user", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -55,20 +55,26 @@ export default function CreateUserPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-10">
+    <div className="min-h-screen bg-slate-50 px-4 py-10">
+     <div className="mb-5">
+              <button
+                onClick={() => router.push("/dashboard/admin")}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition shadow-sm"
+              >
+                ← Back to Dashboard
+              </button>
+            </div>
       <div className="max-w-xl mx-auto bg-white rounded-xl shadow p-8 border border-slate-200">
         <h1 className="text-2xl font-bold mb-6 text-slate-900">
           Create New User
         </h1>
 
-        {/* Success */}
         {success && (
           <div className="mb-4 p-3 rounded-md bg-green-100 text-green-700 border border-green-300">
             {success}
           </div>
         )}
 
-        {/* Error */}
         {error && (
           <div className="mb-4 p-3 rounded-md bg-red-100 text-red-700 border border-red-300">
             {error}
@@ -76,7 +82,6 @@ export default function CreateUserPage() {
         )}
 
         <form onSubmit={submitForm} className="space-y-5">
-          {/* NU ID */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
               NU ID
@@ -88,11 +93,10 @@ export default function CreateUserPage() {
               value={form.nu_id}
               onChange={handleChange}
               placeholder="e.g., 20250001"
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-slate-300 text-gray-900 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
-          {/* Email */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Email
@@ -104,11 +108,10 @@ export default function CreateUserPage() {
               value={form.email}
               onChange={handleChange}
               placeholder="example@nu.edu.kz"
-              className="w-full border border-slate-300 rounded-lg px-3 py-2"
+              className="w-full border text-gray-900 border-slate-300 rounded-lg px-3 py-2"
             />
           </div>
 
-          {/* Phone */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Phone
@@ -119,28 +122,25 @@ export default function CreateUserPage() {
               value={form.phone}
               onChange={handleChange}
               placeholder="+77001234567"
-              className="w-full border border-slate-300 rounded-lg px-3 py-2"
+              className="w-full border text-gray-900 border-slate-300 rounded-lg px-3 py-2"
             />
           </div>
 
-          {/* Role */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Role
             </label>
             <select
-              name="role_id"
-              value={form.role_id}
+              name="role"
+              value={form.role}
               onChange={handleChange}
               className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white text-gray-900"
             >
-              <option value={1}>Student</option>
-              <option value={2}>Housing Staff</option>
-              <option value={3}>Admin</option>
+              <option value="housing">Housing Staff</option>
+              <option value="admin">Admin</option>
             </select>
           </div>
 
-          {/* Password */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Password
@@ -152,11 +152,10 @@ export default function CreateUserPage() {
               value={form.password}
               onChange={handleChange}
               placeholder="Enter password"
-              className="w-full border border-slate-300 rounded-lg px-3 py-2"
+              className="w-full border text-gray-900 border-slate-300 rounded-lg px-3 py-2"
             />
           </div>
 
-          {/* Submit */}
           <button
             type="submit"
             disabled={loading}

@@ -10,9 +10,11 @@ import Card from "@/components/ui/Card";
 export default function SignupForm() {
   const router = useRouter();
   const [formData, setFormData] = useState({
+    nuId: "",
     firstName: "",
     lastName: "",
     email: "",
+    phone: "",
     password: "",
     confirmPassword: "",
   });
@@ -21,9 +23,11 @@ export default function SignupForm() {
   const [success, setSuccess] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    if (name === "nuId" && value !== "" && !/^\d{0,9}$/.test(value)) return;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
   };
 
@@ -31,6 +35,16 @@ export default function SignupForm() {
     e.preventDefault();
     setError("");
     setSuccess("");
+
+    if (!formData.email.trim().endsWith("@nu.edu.kz")) {
+      setError("Only @nu.edu.kz email addresses are allowed.");
+      return;
+    }
+
+    if (formData.nuId.length !== 9) {
+      setError("Student ID must be exactly 9 digits.");
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
@@ -51,9 +65,11 @@ export default function SignupForm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          nu_id: formData.nuId.trim(),
           firstName: formData.firstName.trim(),
           lastName: formData.lastName.trim(),
           email: formData.email.trim(),
+          phone: formData.phone.trim(),
           password: formData.password,
           confirmPassword: formData.confirmPassword,
           role: "student",
@@ -143,6 +159,18 @@ export default function SignupForm() {
         )}
 
         <div className="space-y-4">
+          <Input
+            id="nuId"
+            name="nuId"
+            type="text"
+            label="Student ID"
+            required
+            placeholder="Student ID: e.g. 202400001"
+            value={formData.nuId}
+            onChange={handleChange}
+            maxLength={9}
+          />
+
           <div className="grid grid-cols-2 gap-4">
             <Input
               id="firstName"
@@ -175,8 +203,20 @@ export default function SignupForm() {
             label="Email address"
             autoComplete="email"
             required
-            placeholder="Email address"
+            placeholder="your.name@nu.edu.kz"
             value={formData.email}
+            onChange={handleChange}
+          />
+
+          <Input
+            id="phone"
+            name="phone"
+            type="tel"
+            label="Phone Number"
+            autoComplete="tel"
+            required
+            placeholder="+7 700 123 4567"
+            value={formData.phone}
             onChange={handleChange}
           />
 

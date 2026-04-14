@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 
 interface User {
   id: number;
@@ -24,6 +25,7 @@ const roleColor: Record<number, string> = {
 };
 
 export default function UsersPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -32,13 +34,9 @@ export default function UsersPage() {
     const fetchUsers = async () => {
       try {
         const token = localStorage.getItem("token");
-
         const res = await fetch("http://localhost:8080/admin/users", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
-
         const data = await res.json();
         setUsers(data.users ?? data);
       } catch (err) {
@@ -47,14 +45,12 @@ export default function UsersPage() {
         setLoading(false);
       }
     };
-
     fetchUsers();
   }, []);
 
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return users;
-
     return users.filter(
       (u) =>
         u.nu_id.toLowerCase().includes(q) ||
@@ -77,6 +73,17 @@ export default function UsersPage() {
   return (
     <div className="min-h-screen bg-slate-50 py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        {/* Back button */}
+        <div className="mb-5">
+          <button
+            onClick={() => router.push("/dashboard/admin")}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition shadow-sm"
+          >
+            ← Back to Dashboard
+          </button>
+        </div>
+
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -85,7 +92,6 @@ export default function UsersPage() {
               Manage all accounts in the housing system.
             </p>
           </div>
-
           <div className="hidden sm:flex flex-col items-end text-sm text-slate-500">
             <span>Total users</span>
             <span className="text-2xl font-semibold text-slate-900">
@@ -108,7 +114,6 @@ export default function UsersPage() {
               className="w-full rounded-md border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
-
           <span className="text-xs text-slate-400">
             Showing {filteredUsers.length} of {users.length} users
           </span>
@@ -132,14 +137,10 @@ export default function UsersPage() {
                 {filteredUsers.map((u, idx) => (
                   <tr
                     key={u.id}
-                    className={
-                      idx % 2 === 0 ? "bg-white" : "bg-slate-50/70"
-                    }
+                    className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/70"}
                   >
                     <td className="px-4 py-3 text-slate-500">{u.id}</td>
-                    <td className="px-4 py-3 font-medium text-slate-900">
-                      {u.nu_id}
-                    </td>
+                    <td className="px-4 py-3 font-medium text-slate-900">{u.nu_id}</td>
                     <td className="px-4 py-3 text-slate-800">{u.email}</td>
                     <td className="px-4 py-3">
                       <span
@@ -148,21 +149,15 @@ export default function UsersPage() {
                         {roleLabel[u.role_id] || `Role ${u.role_id}`}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-800">
-                      {u.phone || "—"}
-                    </td>
+                    <td className="px-4 py-3 text-slate-800">{u.phone || "—"}</td>
                     <td className="px-4 py-3 text-slate-500">
                       {new Date(u.created_at).toLocaleString()}
                     </td>
                   </tr>
                 ))}
-
                 {filteredUsers.length === 0 && (
                   <tr>
-                    <td
-                      colSpan={6}
-                      className="px-4 py-6 text-center text-slate-400"
-                    >
+                    <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
                       No users match your search.
                     </td>
                   </tr>
