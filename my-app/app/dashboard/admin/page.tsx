@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/ui/Navbar";
+import { apiJson } from "@/lib/auth";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 interface Stats {
   users: number;
@@ -11,58 +13,30 @@ interface Stats {
 }
 
 export default function AdminDashboard() {
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { isLoading, isAuthenticated } = useAuthGuard("admin");
   const [stats, setStats] = useState<Stats | null>(null);
   const router = useRouter();
 
   const fetchStats = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:8080/admin/stats", {
-        headers: { Authorization: `Bearer ${token}` },
+      const statsData = await apiJson<Stats>("/admin/stats", {
+        method: "GET",
       });
-      if (response.ok) {
-        const statsData = await response.json();
-        setStats(statsData);
-      }
+      setStats(statsData);
     } catch (error) {
       console.error("Error fetching stats:", error);
     }
   }, []);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const userData = localStorage.getItem("user");
-      const token = localStorage.getItem("token");
+    if (isLoading || !isAuthenticated) return;
+    const timeoutId = window.setTimeout(() => {
+      void fetchStats();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [fetchStats, isAuthenticated, isLoading]);
 
-      if (!userData || !token) {
-        router.push("/auth/login");
-        return;
-      }
-
-      let parsedUser;
-      try {
-        parsedUser = JSON.parse(userData);
-      } catch {
-        router.push("/auth/login");
-        return;
-      }
-
-      if (parsedUser.role !== "admin") {
-        router.push("/auth/login");
-        return;
-      }
-
-      setUser(parsedUser);
-      await fetchStats();
-      setIsLoading(false);
-    };
-
-    checkAuth();
-  }, [router, fetchStats]);
-
-  if (isLoading) {
+  if (isLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

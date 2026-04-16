@@ -1,26 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { clearStoredSession, getStoredSession } from "@/lib/auth";
 
 export default function Navbar() {
   const router = useRouter();
-  const [user, setUser] = useState<{ email?: string; role?: string }>({});
-
-  useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      try {
-        setUser(JSON.parse(userData));
-      } catch {
-        setUser({});
-      }
-    }
-  }, []);
+  const [user] = useState(() => getStoredSession().user ?? {});
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    clearStoredSession();
     router.push("/auth/login");
   };
 

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 export default function BackupPage() {
+  const { isLoading, isAuthenticated } = useAuthGuard("admin");
   const [status, setStatus] = useState<"idle" | "running" | "done" | "error">(
     "idle"
   );
@@ -15,6 +17,17 @@ export default function BackupPage() {
       setStatus("done");
     }, 2000);
   };
+
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3" />
+          <p className="text-slate-700 font-medium">Loading…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 py-10">

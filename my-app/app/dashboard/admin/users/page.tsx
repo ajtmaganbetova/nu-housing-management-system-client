@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { apiJson } from "@/lib/auth";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 interface User {
   id: number;
@@ -26,29 +28,30 @@ const roleColor: Record<number, string> = {
 
 export default function UsersPage() {
   const router = useRouter();
+  const { isLoading: authLoading, isAuthenticated } = useAuthGuard("admin");
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
+    if (authLoading || !isAuthenticated) return;
+
     const fetchUsers = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:8080/admin/users", {
-          headers: { Authorization: `Bearer ${token}` },
+        const data = await apiJson<{ users?: User[] } | User[]>("/admin/users", {
+          method: "GET",
         });
-        const data = await res.json();
-        setUsers(data.users ?? data);
+        setUsers(Array.isArray(data) ? data : data.users ?? []);
       } catch (err) {
         console.error("Failed to load users", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchUsers();
-  }, []);
+    void fetchUsers();
+  }, [authLoading, isAuthenticated]);
 
-  const filteredUsers = useMemo(() => {
+  const filteredUsers = useMemo<User[]>(() => {
     const q = search.trim().toLowerCase();
     if (!q) return users;
     return users.filter(
@@ -59,7 +62,7 @@ export default function UsersPage() {
     );
   }, [users, search]);
 
-  if (loading) {
+  if (authLoading || !isAuthenticated || loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">

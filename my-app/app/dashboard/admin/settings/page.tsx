@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 export default function SettingsPage() {
+  const { isLoading, isAuthenticated } = useAuthGuard("admin");
   const [applicationOpen, setApplicationOpen] = useState("2025-01-01");
   const [applicationClose, setApplicationClose] = useState("2025-12-31");
   const [maintenanceMode, setMaintenanceMode] = useState(false);
@@ -14,14 +16,24 @@ export default function SettingsPage() {
     setSaving(true);
     setMessage(null);
 
-    // TODO: replace this with real API call to backend
-    // await fetch("http://localhost:8080/admin/settings", { ... })
+    // TODO: replace this with a real API call through the shared API layer.
 
     setTimeout(() => {
       setSaving(false);
       setMessage("Settings saved (demo only, no backend yet 😄)");
     }, 700);
   };
+
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3" />
+          <p className="text-slate-700 font-medium">Loading…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 py-8">

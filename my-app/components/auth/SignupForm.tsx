@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Card from "@/components/ui/Card";
+import {
+  getDashboardPathForRole,
+  registerStudent,
+  signInWithCredentials,
+} from "@/lib/auth";
 
 export default function SignupForm() {
   const router = useRouter();
@@ -59,64 +64,26 @@ export default function SignupForm() {
     setIsLoading(true);
 
     try {
-      const registerResponse = await fetch("http://localhost:8080/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          nu_id: formData.nuId.trim(),
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
-          email: formData.email.trim(),
-          phone: formData.phone.trim(),
-          password: formData.password,
-          confirmPassword: formData.confirmPassword,
-          role: "student",
-        }),
+      await registerStudent({
+        nu_id: formData.nuId.trim(),
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+        role: "student",
       });
 
-      const registerData = await registerResponse.json();
-
-      if (!registerResponse.ok) {
-        const message = [registerData.error, registerData.details]
-          .filter(Boolean)
-          .join(": ");
-        throw new Error(message || "Failed to create account");
-      }
-
-      const loginResponse = await fetch("http://localhost:8080/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: formData.email.trim(),
-          password: formData.password,
-        }),
-      });
-
-      const loginData = await loginResponse.json();
-
-      if (!loginResponse.ok || !loginData.token || !loginData.user) {
-        setSuccess("Account created successfully. Redirecting to sign in...");
-        setTimeout(() => router.push("/auth/login"), 1200);
-        return;
-      }
-
-      localStorage.setItem("token", loginData.token);
-      localStorage.setItem("user", JSON.stringify(loginData.user));
+      const session = await signInWithCredentials(
+        formData.email.trim(),
+        formData.password
+      );
       setSuccess("Account created successfully. Redirecting...");
-
-      const userRole = loginData.user.role;
-      const dashboardPath =
-        userRole === "admin"
-          ? "/dashboard/admin"
-          : userRole === "housing"
-            ? "/dashboard/housing"
-            : "/dashboard/student";
-
-      setTimeout(() => router.push(dashboardPath), 1200);
+      setTimeout(
+        () => router.push(getDashboardPathForRole(session.user?.role)),
+        1200
+      );
     } catch (error) {
       setError(
         error instanceof Error

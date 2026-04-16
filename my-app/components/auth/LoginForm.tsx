@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import OAuthButtons from "@/components/auth/OAuthButtons";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Card from "@/components/ui/Card";
+import { getDashboardPathForRole, signInWithCredentials } from "@/lib/auth";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -18,34 +20,14 @@ export default function LoginForm() {
     setError("");
 
     try {
-      const response = await fetch("http://localhost:8080/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-
-        // Redirect based on role
-        const userRole = data.user.role;
-        if (userRole === "admin") {
-          window.location.href = "/dashboard/admin";
-        } else if (userRole === "housing") {
-          window.location.href = "/dashboard/housing";
-        } else {
-          window.location.href = "/dashboard/student";
-        }
-      } else {
-        setError("Login failed: " + (data.error || "Invalid credentials"));
-      }
-    } catch (error) {
-      setError("Network error: Could not connect to server");
+      const session = await signInWithCredentials(email, password);
+      window.location.href = getDashboardPathForRole(session.user?.role);
+    } catch (loginError) {
+      setError(
+        loginError instanceof Error
+          ? loginError.message
+          : "Network error: Could not connect to server"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -110,6 +92,17 @@ export default function LoginForm() {
         <Button type="submit" disabled={isLoading}>
           {isLoading ? "Signing in..." : "Sign in"}
         </Button>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-200" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-white px-2 text-gray-500">Or continue with</span>
+          </div>
+        </div>
+
+        <OAuthButtons />
       </form>
     </Card>
   );

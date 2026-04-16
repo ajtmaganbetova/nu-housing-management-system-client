@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { apiJson } from "@/lib/auth";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 interface LogEntry {
   id: number;
@@ -38,32 +40,32 @@ const actionIcons: Record<string, string> = {
 
 export default function LogsPage() {
   const router = useRouter();
+  const { isLoading: authLoading, isAuthenticated } = useAuthGuard("admin");
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
+    if (authLoading || !isAuthenticated) return;
+
     const fetchLogs = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:8080/admin/logs", {
-          headers: { Authorization: `Bearer ${token}` },
+        const data = await apiJson<LogEntry[]>("/admin/logs", {
+          method: "GET",
         });
-        if (!res.ok) throw new Error(`Server error: ${res.status}`);
-        const data: LogEntry[] = await res.json();
         setLogs(data);
-      } catch (err: any) {
-        setError(err.message ?? "Failed to load logs");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load logs");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchLogs();
+    void fetchLogs();
     const interval = setInterval(fetchLogs, 30_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [authLoading, isAuthenticated]);
 
   const filteredLogs = (logs ?? []).filter((log) => {
     if (!search.trim()) return true;
@@ -111,7 +113,7 @@ export default function LogsPage() {
           </div>
         </div>
 
-        {loading && <p className="text-sm text-slate-400 mb-4">Loading logs…</p>}
+        {(authLoading || !isAuthenticated || loading) && <p className="text-sm text-slate-400 mb-4">Loading logs…</p>}
         {error && (
           <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}

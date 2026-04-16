@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import HousingApplicationsTable from '@/components/dashboard/HousingApplicationsTable';
 import Navbar from "@/components/ui/Navbar";
+import { apiJson } from "@/lib/auth";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 export default function HousingDashboard() {
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { isLoading, isAuthenticated } = useAuthGuard("housing");
   const [refreshKey, setRefreshKey] = useState(0);
   const [stats, setStats] = useState({
     total: 0,
@@ -16,24 +16,18 @@ export default function HousingDashboard() {
     rejected: 0
   });
 
-  const router = useRouter();
-
   const fetchStats = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      const response = await fetch('http://localhost:8080/housing/applications', {
-        headers: { Authorization: `Bearer ${token}` },
+      const apps =
+        (await apiJson<{ status: string }[]>('/housing/applications', {
+          method: "GET",
+        })) || [];
+      setStats({
+        total: apps.length,
+        pending: apps.filter((app) => app.status === 'pending').length,
+        approved: apps.filter((app) => app.status === 'approved').length,
+        rejected: apps.filter((app) => app.status === 'rejected').length,
       });
-      if (response.ok) {
-        const apps = (await response.json()) || [];
-        setStats({
-          total: apps.length,
-          pending: apps.filter((app: { status: string }) => app.status === 'pending').length,
-          approved: apps.filter((app: { status: string }) => app.status === 'approved').length,
-          rejected: apps.filter((app: { status: string }) => app.status === 'rejected').length,
-        });
-      }
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
@@ -45,28 +39,23 @@ export default function HousingDashboard() {
   }, [fetchStats]);
 
   useEffect(() => {
-    const checkAuth = () => {
-      const userData = localStorage.getItem('user');
-      const token = localStorage.getItem('token');
-      if (!userData || !token) { router.push('/auth/login'); return; }
-      let parsedUser;
-      try { parsedUser = JSON.parse(userData); } catch { router.push('/auth/login'); return; }
-      if (parsedUser.role !== 'housing') { router.push('/auth/login'); return; }
-      setUser(parsedUser);
-      fetchStats().then(() => setIsLoading(false));
-    };
-    checkAuth();
-  }, [router, fetchStats]);
+    if (isLoading || !isAuthenticated) return;
+    const timeoutId = window.setTimeout(() => {
+      void fetchStats();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [fetchStats, isAuthenticated, isLoading]);
 
   useEffect(() => {
+    if (isLoading || !isAuthenticated) return;
     const interval = setInterval(() => {
-      fetchStats();
+      void fetchStats();
       setRefreshKey((k) => k + 1);
     }, 30000);
     return () => clearInterval(interval);
-  }, [fetchStats]);
+  }, [fetchStats, isAuthenticated, isLoading]);
 
-  if (isLoading) {
+  if (isLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

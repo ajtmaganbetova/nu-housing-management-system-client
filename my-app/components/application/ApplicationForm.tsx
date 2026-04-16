@@ -4,6 +4,8 @@ import { useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
+import { apiJson, getStoredSession } from "@/lib/auth";
+import { uploadDocument } from "@/lib/documents";
 
 type ApplicationStatus = "idle" | "submitted" | "error";
 type ApplicantType = "local" | "international";
@@ -116,7 +118,7 @@ export default function ApplicationForm() {
   const [applicationStatus, setApplicationStatus] = useState<ApplicationStatus>("idle");
   const [error, setError] = useState("");
 
-  const storedUser = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}") : {};
+  const storedUser = getStoredSession().user ?? {};
 
   const [formData, setFormData] = useState({
     applicantType: "local" as ApplicantType,
@@ -208,8 +210,7 @@ export default function ApplicationForm() {
     setError("");
 
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
+      if (!storedUser) {
         setError("Please log in first");
         setApplicationStatus("error");
         return;
@@ -236,37 +237,26 @@ export default function ApplicationForm() {
         formData.comments ? `Comments: ${formData.comments}` : null,
       ].filter(Boolean).join("\n");
 
-      const response = await fetch("http://localhost:8080/applications/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          year: new Date().getFullYear(),
-          major: formData.level === "NUFYP" ? "NUFYP" : formData.major,
-          gender: formData.gender || "Other",
-          additional_info: additionalInfo,
-        }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(data?.error || `HTTP error! status: ${response.status}`);
-      }
+      const data = await apiJson<{ application_id?: number; error?: string }>(
+        "/applications/submit",
+        {
+          method: "POST",
+          jsonBody: {
+            year: new Date().getFullYear(),
+            major: formData.level === "NUFYP" ? "NUFYP" : formData.major,
+            gender: formData.gender || "Other",
+            additional_info: additionalInfo,
+          },
+        }
+      );
 
       if (data?.application_id) {
         const appId = data.application_id;
         const uploadFile = async (file: File, docType: string) => {
-          const uploadData = new FormData();
-          uploadData.append("application_id", String(appId));
-          uploadData.append("type", docType);
-          uploadData.append("file", file);
-          await fetch("http://localhost:8080/documents/upload", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-            body: uploadData,
+          await uploadDocument({
+            applicationId: appId,
+            type: docType,
+            file,
           });
         };
 
@@ -439,7 +429,7 @@ export default function ApplicationForm() {
                 placeholder="e.g. 202400042"
                 maxLength={9}
               />
-              <p className="mt-1 text-xs text-gray-400">Enter the Student ID of the person you'd like to room with. Both students must list each other for the request to be considered.</p>
+              <p className="mt-1 text-xs text-gray-400">Enter the Student ID of the person you&apos;d like to room with. Both students must list each other for the request to be considered.</p>
             </div>
           </div>
         </div>

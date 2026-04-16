@@ -1,6 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { apiJson } from "@/lib/auth";
+import {
+  ApplicationDocument,
+  listApplicationDocuments,
+  resolveDocumentDownloadUrl,
+} from "@/lib/documents";
 
 interface Application {
   id: number;
@@ -15,12 +21,6 @@ interface Application {
   rejected_reason?: string;
   student_name?: string;
   email?: string;
-}
-
-interface Document {
-  id: number;
-  type: string;
-  download_url: string;
 }
 
 function parseAdditionalInfo(info: string): Record<string, string> {
@@ -88,23 +88,17 @@ function ApplicationCard({
   onReject: (id: number) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const [documents, setDocuments] = useState<ApplicationDocument[]>([]);
   const [docsLoading, setDocsLoading] = useState(false);
+  const [openingDocumentId, setOpeningDocumentId] = useState<string | number | null>(null);
   const info = parseAdditionalInfo(application.additional_info);
 
   const fetchDocuments = async () => {
     if (documents.length > 0) return;
     setDocsLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `http://localhost:8080/documents/application/${application.id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (response.ok) {
-        const docs = await response.json();
-        setDocuments(Array.isArray(docs) ? docs : []);
-      }
+      const docs = await listApplicationDocuments(application.id);
+      setDocuments(docs);
     } catch (e) {
       console.error("Failed to fetch documents", e);
     } finally {
@@ -115,6 +109,24 @@ function ApplicationCard({
   const handleExpand = () => {
     setExpanded(!expanded);
     if (!expanded) fetchDocuments();
+  };
+
+  const handleOpenDocument = async (document: ApplicationDocument) => {
+    const docId = document.id ?? document.name ?? document.type;
+    setOpeningDocumentId(docId);
+    try {
+      const url = await resolveDocumentDownloadUrl(document);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      console.error("Failed to resolve document download", error);
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Unable to open document."
+      );
+    } finally {
+      setOpeningDocumentId(null);
+    }
   };
 
   return (
@@ -238,9 +250,15 @@ function ApplicationCard({
                       <span className="text-red-500">📄</span>
                       <span className="text-sm text-gray-700">{docTypeLabels[doc.type] || doc.type}</span>
                     </div>
-                    <a href={doc.download_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline font-medium">
-                      Download
-                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDocument(doc)}
+                      className="text-xs text-blue-600 hover:underline font-medium"
+                    >
+                      {openingDocumentId === (doc.id ?? doc.name ?? doc.type)
+                        ? "Opening..."
+                        : "Open"}
+                    </button>
                   </div>
                 ))}
               </div>
@@ -269,17 +287,9 @@ export default function HousingApplicationsTable({ onStatsUpdate }: { onStatsUpd
 
   const fetchApplications = async () => {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setError("Please log in first");
-        setIsLoading(false);
-        return;
-      }
-      const response = await fetch("http://localhost:8080/housing/applications", {
-        headers: { Authorization: `Bearer ${token}` },
+      const apps = await apiJson<Application[]>("/housing/applications", {
+        method: "GET",
       });
-      if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
-      const apps = await response.json();
       setApplications(Array.isArray(apps) ? apps : []);
     } catch (error) {
       console.error("Error fetching applications:", error);
@@ -291,19 +301,15 @@ export default function HousingApplicationsTable({ onStatsUpdate }: { onStatsUpd
 
   const handleApprove = async (applicationId: number) => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `http://localhost:8080/housing/applications/${applicationId}/approve`,
-        { method: "PATCH", headers: { Authorization: `Bearer ${token}` } }
+      await apiJson(`/housing/applications/${applicationId}/approve`, {
+        method: "PATCH",
+      });
+      void fetchApplications();
+      onStatsUpdate?.();
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : "Error approving application"
       );
-      if (response.ok) {
-        fetchApplications();
-        onStatsUpdate?.();
-      } else {
-        alert("Failed to approve application");
-      }
-    } catch {
-      alert("Error approving application");
     }
   };
 
@@ -311,23 +317,16 @@ export default function HousingApplicationsTable({ onStatsUpdate }: { onStatsUpd
     const reason = prompt("Please enter reason for rejection:");
     if (!reason) return;
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `http://localhost:8080/housing/applications/${applicationId}/reject`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ reason }),
-        }
+      await apiJson(`/housing/applications/${applicationId}/reject`, {
+        method: "PATCH",
+        jsonBody: { reason },
+      });
+      void fetchApplications();
+      onStatsUpdate?.();
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : "Error rejecting application"
       );
-      if (response.ok) {
-        fetchApplications();
-        onStatsUpdate?.();
-      } else {
-        alert("Failed to reject application");
-      }
-    } catch {
-      alert("Error rejecting application");
     }
   };
 

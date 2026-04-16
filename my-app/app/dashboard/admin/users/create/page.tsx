@@ -1,9 +1,12 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiRequest } from "@/lib/auth";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 export default function CreateUserPage() {
   const router = useRouter();
+  const { isLoading: authLoading, isAuthenticated } = useAuthGuard("admin");
 
   const [form, setForm] = useState({
     nu_id: "",
@@ -28,15 +31,9 @@ export default function CreateUserPage() {
     setSuccess("");
 
     try {
-      const token = localStorage.getItem("token");
-
-      const res = await fetch("http://localhost:8080/admin/create-user", {
+      const res = await apiRequest("/admin/create-user", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(form),
+        jsonBody: form,
       });
 
       if (!res.ok) {
@@ -53,6 +50,17 @@ export default function CreateUserPage() {
       setLoading(false);
     }
   };
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3" />
+          <p className="text-slate-700 font-medium">Loading…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10">

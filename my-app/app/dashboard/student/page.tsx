@@ -4,8 +4,10 @@ import ApplicationForm from "@/components/application/ApplicationForm";
 import ApplicationsTable from "@/components/dashboard/ApplicationsTable";
 import { useState, useCallback } from "react";
 import Navbar from "@/components/ui/Navbar";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 export default function StudentDashboard() {
+  const { isLoading, isAuthenticated } = useAuthGuard("student");
   const [activeTab, setActiveTab] = useState<"apply" | "applications">("apply");
   const [showContact, setShowContact] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -13,6 +15,19 @@ export default function StudentDashboard() {
   const handleRefresh = useCallback(() => {
     setRefreshKey((k) => k + 1);
   }, []);
+
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h1 className="text-xl font-bold text-gray-900">
+            Loading Student Dashboard...
+          </h1>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
