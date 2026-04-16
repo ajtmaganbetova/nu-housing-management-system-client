@@ -13,19 +13,19 @@ export default function Button({
   ...props
 }: ButtonProps) {
   const baseStyles =
-    "w-full flex justify-center font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition duration-200";
+    "inline-flex w-full items-center justify-center rounded-full font-medium tracking-tight transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#17172f]/20 disabled:cursor-not-allowed disabled:opacity-60";
 
   const variants = {
     primary:
-      "border border-transparent text-white bg-blue-600 hover:bg-blue-700 focus:ring-blue-500",
+      "bg-[#17172f] text-white shadow-[0_14px_30px_rgba(23,23,47,0.18)] hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(23,23,47,0.22)]",
     secondary:
-      "border border-transparent text-white bg-gray-600 hover:bg-gray-700 focus:ring-gray-500",
+      "border border-white/70 bg-white/75 text-[#17172f] backdrop-blur-sm shadow-[0_12px_28px_rgba(95,107,145,0.12)] hover:bg-white",
   };
 
   const sizes = {
-    sm: "py-1 px-3 text-sm",
-    md: "py-2 px-4 text-sm",
-    lg: "py-3 px-6 text-base",
+    sm: "px-4 py-2 text-sm",
+    md: "px-5 py-3 text-sm",
+    lg: "px-6 py-3.5 text-base",
   };
 
   return (

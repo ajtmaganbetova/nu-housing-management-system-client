@@ -2,21 +2,51 @@
 
 import ApplicationForm from "@/components/application/ApplicationForm";
 import ApplicationsTable from "@/components/dashboard/ApplicationsTable";
-import { useState, useCallback } from "react";
 import Navbar from "@/components/ui/Navbar";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useState, useCallback, useEffect } from "react";
+
+type StoredUser = {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  role?: string;
+};
 
 export default function StudentDashboard() {
   const { isLoading, isAuthenticated } = useAuthGuard("student");
+
   const [activeTab, setActiveTab] = useState<"apply" | "applications">("apply");
   const [showContact, setShowContact] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [user, setUser] = useState<StoredUser | null>(null);
+
+  useEffect(() => {
+    const savedTab = localStorage.getItem("studentTab");
+    if (savedTab === "apply" || savedTab === "applications") {
+      setActiveTab(savedTab);
+    }
+
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        setUser(null);
+      }
+    }
+  }, []);
+
+  const handleTabChange = (tab: "apply" | "applications") => {
+    setActiveTab(tab);
+    localStorage.setItem("studentTab", tab);
+  };
 
   const handleRefresh = useCallback(() => {
     setRefreshKey((k) => k + 1);
   }, []);
 
-  if (isLoading || !isAuthenticated) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -29,23 +59,32 @@ export default function StudentDashboard() {
     );
   }
 
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  const displayName = user?.firstName?.trim() || "Student";
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
       <div className="py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Student Dashboard</h1>
-            <p className="mt-1 text-gray-500 text-sm">Manage your housing application and check your status</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Welcome, {displayName}
+            </h1>
+            <p className="mt-1 text-gray-500 text-sm">
+              Manage your housing application and check your status
+            </p>
           </div>
 
           <div className="mb-8">
             <div className="border-b border-gray-200">
               <nav className="-mb-px flex space-x-8">
                 <button
-                  onClick={() => setActiveTab("apply")}
+                  onClick={() => handleTabChange("apply")}
                   className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === "apply"
                       ? "border-blue-600 text-blue-600"
@@ -54,8 +93,9 @@ export default function StudentDashboard() {
                 >
                   Submit Application
                 </button>
+
                 <button
-                  onClick={() => setActiveTab("applications")}
+                  onClick={() => handleTabChange("applications")}
                   className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === "applications"
                       ? "border-blue-600 text-blue-600"
@@ -68,53 +108,55 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-{activeTab === "apply" && (
-  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-    {/* LEFT SIDEBAR: Grouping Tips and Contact together */}
-    <div className="lg:col-span-1 space-y-6">
+          {activeTab === "apply" && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+              <div className="lg:col-span-1 space-y-6">
+                <div className="bg-blue-50 rounded-xl border border-blue-100 p-5">
+                  <h3 className="text-lg font-semibold text-blue-800 mb-2">
+                    💡 Tips
+                  </h3>
+                  <ul className="text-xs text-blue-700 space-y-1.5">
+                    <li>• All documents must be in PDF format</li>
+                    <li>• Ensure your Student ID is correct</li>
+                    <li>• Check My Applications tab to see your status</li>
+                  </ul>
+                </div>
 
-      {/* Tips Card */}
-      <div className="bg-blue-50 rounded-xl border border-blue-100 p-5">
-        <h3 className="text-lg font-semibold text-blue-800 mb-2">💡 Tips</h3>
-        <ul className="text-xs text-blue-700 space-y-1.5">
-          <li>• All documents must be in PDF format</li>
-          <li>• Ensure your Student ID is correct</li>
-          <li>• Check My Applications tab to see your status</li>
-        </ul>
-      </div>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                  <h2 className="text-lg text-gray-700 font-bold mb-4">
+                    Contact Housing Office
+                  </h2>
+                  <button
+                    onClick={() => setShowContact(true)}
+                    className="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    📞 HOUSING OFFICE
+                  </button>
+                </div>
+              </div>
 
-      {/* Contact Card - Now styled to match the sidebar width */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h2 className="text-lg text-gray-700 font-bold mb-4">Contact Housing Office</h2>
-        <button
-          onClick={() => setShowContact(true)}
-          className="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-lg text-sm font-medium transition-colors"
-        >
-          📞 HOUSING OFFICE
-        </button>
-      </div>
-    </div>
-
-    {/* RIGHT SIDE: The Form */}
-    <div className="lg:col-span-2">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-        <ApplicationForm />
-      </div>
-    </div>
-  </div>
-)}
+              <div className="lg:col-span-2">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+                  <ApplicationForm />
+                </div>
+              </div>
+            </div>
+          )}
 
           {activeTab === "applications" && (
             <div>
               <div className="flex items-center justify-between mb-6">
-                <p className="text-sm text-gray-500">Click on any application to expand its details.</p>
+                <p className="text-sm text-gray-500">
+                  Click on any application to expand its details.
+                </p>
                 <button
                   onClick={handleRefresh}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors"
                 >
-                   Refresh
+                  Refresh
                 </button>
               </div>
+
               <ApplicationsTable key={refreshKey} />
             </div>
           )}
@@ -131,7 +173,9 @@ export default function StudentDashboard() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Contact Housing Office</h2>
+              <h2 className="text-xl font-bold text-gray-900">
+                Contact Housing Office
+              </h2>
               <button
                 onClick={() => setShowContact(false)}
                 className="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition text-lg"
@@ -144,8 +188,13 @@ export default function StudentDashboard() {
               <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
                 <span className="text-2xl">📧</span>
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Email</p>
-                  <a href="mailto:student_housing@nu.edu.kz" className="text-blue-600 hover:underline text-sm font-medium">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                    Email
+                  </p>
+                  <a
+                    href="mailto:student_housing@nu.edu.kz"
+                    className="text-blue-600 hover:underline text-sm font-medium"
+                  >
                     student_housing@nu.edu.kz
                   </a>
                 </div>
@@ -154,35 +203,56 @@ export default function StudentDashboard() {
               <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
                 <span className="text-2xl">🏢</span>
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Office</p>
-                  <p className="text-sm font-medium text-gray-800">Block 24, Office 050</p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                    Office
+                  </p>
+                  <p className="text-sm font-medium text-gray-800">
+                    Block 24, Office 050
+                  </p>
                 </div>
               </div>
 
               <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
                 <span className="text-2xl">🕐</span>
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Working Hours</p>
-                  <p className="text-sm font-medium text-gray-800">10:00 – 18:00</p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                    Working Hours
+                  </p>
+                  <p className="text-sm font-medium text-gray-800">
+                    10:00 – 18:00
+                  </p>
                 </div>
               </div>
 
               <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
                 <span className="text-2xl">📞</span>
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Phone Numbers</p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                    Phone Numbers
+                  </p>
                   <div className="space-y-2 mt-1">
                     <div className="flex items-center gap-2">
-                      <a href="tel:+77172706471" className="text-blue-600 hover:underline text-sm font-medium">
+                      <a
+                        href="tel:+77172706471"
+                        className="text-blue-600 hover:underline text-sm font-medium"
+                      >
                         8(7172) 70-6471
                       </a>
-                      <span className="text-gray-400 text-xs">— Yerzhan Kani</span>
+                      <span className="text-gray-400 text-xs">
+                        — Yerzhan Kani
+                      </span>
                     </div>
+
                     <div className="flex items-center gap-2">
-                      <a href="tel:+77172708983" className="text-blue-600 hover:underline text-sm font-medium">
+                      <a
+                        href="tel:+77172708983"
+                        className="text-blue-600 hover:underline text-sm font-medium"
+                      >
                         8(7172) 70-8983
                       </a>
-                      <span className="text-gray-400 text-xs">— Samal Tastambekova</span>
+                      <span className="text-gray-400 text-xs">
+                        — Samal Tastambekova
+                      </span>
                     </div>
                   </div>
                 </div>

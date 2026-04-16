@@ -12,6 +12,17 @@ import {
   signInWithCredentials,
 } from "@/lib/auth";
 
+function MiniInfo({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-[24px] border border-white/70 bg-white/75 p-4 shadow-[0_12px_28px_rgba(122,132,173,0.1)]">
+      <p className="text-sm font-semibold tracking-tight text-[#17172f]">
+        {title}
+      </p>
+      <p className="mt-1 text-xs leading-5 text-[#7d879b]">{text}</p>
+    </div>
+  );
+}
+
 export default function SignupForm() {
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -77,18 +88,18 @@ export default function SignupForm() {
 
       const session = await signInWithCredentials(
         formData.email.trim(),
-        formData.password
+        formData.password,
       );
       setSuccess("Account created successfully. Redirecting...");
       setTimeout(
         () => router.push(getDashboardPathForRole(session.user?.role)),
-        1200
+        1200,
       );
     } catch (error) {
       setError(
         error instanceof Error
           ? error.message
-          : "Could not create account. Check if the backend is running."
+          : "Could not create account. Check if the backend is running.",
       );
     } finally {
       setIsLoading(false);
@@ -96,143 +107,160 @@ export default function SignupForm() {
   };
 
   return (
-    <Card className="max-w-md w-full space-y-8">
-      <div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Create your account
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Or{" "}
-          <Link
-            href="/auth/login"
-            className="font-medium text-blue-600 hover:text-blue-500"
-          >
-            sign in to existing account
-          </Link>
-        </p>
-      </div>
-
-      <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4">
-            <p className="text-sm text-red-700">{error}</p>
+    <div className="relative overflow-hidden rounded-[36px] bg-[radial-gradient(circle_at_top_left,_rgba(202,206,251,0.95),_rgba(240,242,248,0.72)_38%,_rgba(237,240,248,0.9)_70%,_rgba(213,217,243,0.95)_100%)] p-4 md:p-8">
+      <Card className="mx-auto grid max-w-6xl gap-8 md:grid-cols-[0.92fr_1.08fr]">
+        <div className="space-y-6">
+          <div className="rounded-[28px] border border-white/70 bg-white/75 p-6 shadow-[0_18px_40px_rgba(122,132,173,0.12)]">
+            <p className="text-sm font-medium text-[#5e6578]">
+              Student onboarding
+            </p>
+            <h2 className="mt-4 text-4xl font-semibold leading-tight tracking-tight text-[#17172f]">
+              Create your housing portal account
+            </h2>
+            <p className="mt-4 text-sm leading-6 text-[#7d879b]">
+              Set up your profile once and use it for application submission,
+              status tracking, and housing communication.
+            </p>
           </div>
-        )}
 
-        {success && (
-          <div className="bg-green-50 border border-green-200 rounded-md p-4">
-            <p className="text-sm text-green-700">{success}</p>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <Input
-            id="nuId"
-            name="nuId"
-            type="text"
-            label="Student ID"
-            required
-            placeholder="Student ID: e.g. 202400001"
-            value={formData.nuId}
-            onChange={handleChange}
-            maxLength={9}
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              id="firstName"
-              name="firstName"
-              type="text"
-              label="First Name"
-              autoComplete="given-name"
-              required
-              placeholder="First Name"
-              value={formData.firstName}
-              onChange={handleChange}
+          <div className="grid gap-4 md:grid-cols-2">
+            <MiniInfo
+              title="NU email only"
+              text="Registration is restricted to official university email addresses."
             />
-            <Input
-              id="lastName"
-              name="lastName"
-              type="text"
-              label="Last Name"
-              autoComplete="family-name"
-              required
-              placeholder="Last Name"
-              value={formData.lastName}
-              onChange={handleChange}
+            <MiniInfo
+              title="Fast profile setup"
+              text="Your student ID, contact details, and account access are saved together."
+            />
+            <MiniInfo
+              title="Secure access"
+              text="Your credentials are validated before redirecting to your dashboard."
+            />
+            <MiniInfo
+              title="Built for students"
+              text="Designed to match the soft dashboard style across the platform."
             />
           </div>
-
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            label="Email address"
-            autoComplete="email"
-            required
-            placeholder="your.name@nu.edu.kz"
-            value={formData.email}
-            onChange={handleChange}
-          />
-
-          <Input
-            id="phone"
-            name="phone"
-            type="tel"
-            label="Phone Number"
-            autoComplete="tel"
-            required
-            placeholder="+7 700 123 4567"
-            value={formData.phone}
-            onChange={handleChange}
-          />
-
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            label="Password"
-            autoComplete="new-password"
-            required
-            minLength={6}
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-          />
-
-          <Input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            label="Confirm Password"
-            autoComplete="new-password"
-            required
-            placeholder="Confirm Password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-          />
         </div>
 
-        <div className="flex items-center">
-          <input
-            id="agree-terms"
-            name="agree-terms"
-            type="checkbox"
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            required
-          />
-          <label
-            htmlFor="agree-terms"
-            className="ml-2 block text-sm text-gray-900"
-          >
-            I agree to the Terms and Conditions
-          </label>
-        </div>
+        <Card className="border border-white/80 bg-white/82">
+          <div>
+            <p className="text-sm font-medium text-[#5e6578]">Registration</p>
+            <h3 className="mt-2 text-3xl font-semibold tracking-tight text-[#17172f]">
+              Open your account
+            </h3>
+          </div>
 
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Creating Account..." : "Create Account"}
-        </Button>
-      </form>
-    </Card>
+          <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+            {error && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
+
+            {success && (
+              <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3">
+                <p className="text-sm text-green-700">{success}</p>
+              </div>
+            )}
+
+            <div className="grid gap-5 md:grid-cols-2">
+              <Input
+                id="nuId"
+                name="nuId"
+                type="text"
+                label="Student ID"
+                required
+                placeholder="202400001"
+                value={formData.nuId}
+                onChange={handleChange}
+                maxLength={9}
+              />
+              <Input
+                id="phone"
+                name="phone"
+                type="tel"
+                label="Phone number"
+                required
+                placeholder="+7 700 123 4567"
+                value={formData.phone}
+                onChange={handleChange}
+              />
+              <Input
+                id="firstName"
+                name="firstName"
+                type="text"
+                label="First name"
+                required
+                placeholder="First name"
+                value={formData.firstName}
+                onChange={handleChange}
+              />
+              <Input
+                id="lastName"
+                name="lastName"
+                type="text"
+                label="Last name"
+                required
+                placeholder="Last name"
+                value={formData.lastName}
+                onChange={handleChange}
+              />
+            </div>
+
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              label="University email"
+              autoComplete="email"
+              required
+              placeholder="name@nu.edu.kz"
+              value={formData.email}
+              onChange={handleChange}
+            />
+
+            <div className="grid gap-5 md:grid-cols-2">
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                label="Password"
+                autoComplete="new-password"
+                required
+                placeholder="At least 6 characters"
+                value={formData.password}
+                onChange={handleChange}
+              />
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                label="Confirm password"
+                autoComplete="new-password"
+                required
+                placeholder="Repeat password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+              />
+            </div>
+
+            <Button type="submit" disabled={isLoading} size="lg">
+              {isLoading ? "Creating account..." : "Create account"}
+            </Button>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-[#7d879b]">
+            Already registered?{" "}
+            <Link
+              href="/auth/login"
+              className="font-semibold text-[#17172f] transition hover:opacity-75"
+            >
+              Sign in
+            </Link>
+          </p>
+        </Card>
+      </Card>
+    </div>
   );
 }

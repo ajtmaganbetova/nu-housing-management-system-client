@@ -72,9 +72,9 @@ export default function OAuthButtons() {
     window.google.accounts.id.renderButton(buttonRef.current, {
       theme: "outline",
       size: "large",
-      shape: "rectangular",
+      shape: "pill",
       text: "signin_with",
-      width: "320",
+      width: "340",
     });
   }, [scriptLoaded]);
 
@@ -83,9 +83,13 @@ export default function OAuthButtons() {
   return (
     <div className="space-y-3">
       {!appConfig.googleClientId ? (
-        <p className="text-xs text-amber-700">
-          Google sign-in is disabled until `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is configured.
-        </p>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Google sign-in is disabled until
+          {" "}
+          <code className="font-medium">NEXT_PUBLIC_GOOGLE_CLIENT_ID</code>
+          {" "}
+          is configured.
+        </div>
       ) : (
         <>
           <Script
@@ -93,12 +97,20 @@ export default function OAuthButtons() {
             strategy="afterInteractive"
             onLoad={() => setScriptLoaded(true)}
           />
-          <div className={isLoading ? "pointer-events-none opacity-60" : ""}>
+          <div
+            className={`rounded-[26px] border border-white/70 bg-white/85 p-3 shadow-[0_10px_24px_rgba(122,132,173,0.12)] ${
+              isLoading ? "pointer-events-none opacity-60" : ""
+            }`}
+          >
             <div ref={buttonRef} className="flex justify-center" />
           </div>
         </>
       )}
-      {error && <p className="text-sm text-red-700">{error}</p>}
+      {error && (
+        <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
