@@ -59,11 +59,16 @@ function formatDate(dateString: string) {
 function InfoRow({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
   return (
-    <div className="grid gap-1 rounded-2xl border border-[#edf1f8] bg-white/75 px-4 py-3 md:grid-cols-[180px_1fr]">
-      <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#9aa3b8]">
+    <div className="flex flex-col gap-1 rounded-2xl border border-[#f0f3f9] bg-white/50 px-4 py-3 transition-colors hover:border-[#6f63ff]/20">
+      <span className="text-[10px] font-bold uppercase tracking-widest text-[#9aa3b8]">
         {label}
       </span>
-      <span className="text-sm text-[#17172f]">{value}</span>
+      <span
+        className="text-sm font-semibold text-[#17172f] truncate"
+        title={value}
+      >
+        {value}
+      </span>
     </div>
   );
 }
@@ -159,23 +164,32 @@ function ApplicationCard({
   return (
     <div className="overflow-hidden rounded-[30px] border border-white/70 bg-white/78 shadow-[0_18px_42px_rgba(122,132,173,0.14)] backdrop-blur-xl">
       <div
-        className="flex cursor-pointer flex-col gap-4 px-6 py-5 transition hover:bg-white/55 lg:flex-row lg:items-center lg:justify-between"
+        className="flex cursor-pointer items-center justify-between p-6 transition hover:bg-white/50"
         onClick={handleExpand}
       >
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#9aa3b8]">
-            Application #{application.id}
-          </p>
-          <h4 className="mt-2 text-lg font-semibold tracking-tight text-[#17172f]">
-            {info["Name Surname"] || "Application"}
-          </h4>
-          <p className="mt-1 text-sm text-[#7d879b]">
-            {info["Student ID"]
-              ? `Student ID: ${info["Student ID"]}`
-              : `Student DB ID: ${application.student_id}`}{" "}
-            · Submitted {formatDate(application.submitted_at)}
-          </p>
-        </div>
+        <div className="flex items-center gap-5">
+          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg ${
+            application.status === 'approved' ? 'bg-emerald-500' : 
+            application.status === 'rejected' ? 'bg-rose-500' : 'bg-[#6f63ff]'
+          }`}>
+            <span className="text-xs font-bold">#{application.id}</span>
+          </div>
+          </div>
+          <div>
+          <div>
+            <h4 className="text-base font-bold text-[#17172f]">
+              {info["Name Surname"] || "Anonymous Applicant"}
+            </h4>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${getStatusClasses(application.status)}`}>
+                {application.status}
+              </span>
+              <span className="text-xs text-[#9aa3b8] tracking-tight">
+                · {formatDate(application.submitted_at)}
+              </span>
+            </div>
+          </div>
+          </div>
 
         <div className="flex flex-wrap items-center gap-3">
           {application.status === "pending" && (
@@ -426,7 +440,6 @@ export default function HousingApplicationsTable({
     <div className="space-y-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-sm font-medium text-[#5e6578]">Admin review</p>
           <h3 className="text-2xl font-semibold tracking-tight text-[#17172f]">
             Housing applications
           </h3>
@@ -443,7 +456,6 @@ export default function HousingApplicationsTable({
           ))}
         </div>
       </div>
-
       {filteredApplications.length === 0 ? (
         <div className="rounded-[30px] border border-white/70 bg-white/78 px-6 py-12 text-center shadow-[0_18px_42px_rgba(122,132,173,0.14)]">
           <p className="text-lg font-medium text-[#17172f]">

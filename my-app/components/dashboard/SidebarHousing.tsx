@@ -1,12 +1,20 @@
 import {
   LayoutDashboard,
-  FileText,
-  ClipboardList,
-  LifeBuoy,
+  Search,
+  PieChart,
+  Building2,
+  Settings,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 
-type StudentSection = "overview" | "apply" | "applications" | "support";
+// Update this type to match your admin needs
+export type HousingSection =
+  | "dashboard"
+  | "search"
+  | "analytics"
+  | "dorms"
+  | "settings";
 
 export interface User {
   id: number;
@@ -14,35 +22,37 @@ export interface User {
   nu_id: string;
   role: "student" | "admin" | "staff";
   phone: string;
-  firstName?: string; // Optional
-  lastName?: string; // Optional
+  firstName?: string;
+  lastName?: string;
 }
 
-interface SidebarProps {
-  activeSection: StudentSection;
-  onSectionChange: (section: StudentSection) => void;
+interface HousingSidebarProps {
+  activeSection: HousingSection;
+  onSectionChange: (section: HousingSection) => void;
   user: User | null;
   onLogout: () => void;
 }
 
-export function Sidebar({
+export function SidebarHousing({
   activeSection,
   onSectionChange,
   user,
   onLogout,
-}: SidebarProps) {
+}: HousingSidebarProps) {
+  // Use the name from the DB, or fallback to their role title
   const displayName =
-    [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Student";
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+    (user?.role === "admin" ? "System Admin" : "Housing Staff");
 
   return (
-    // Added sticky top-6 to keep it visible during long scrolls
     <aside className="sticky top-6 h-fit rounded-[30px] border border-white/70 bg-white/80 p-5 shadow-[0_18px_50px_rgba(122,132,173,0.12)] backdrop-blur">
+      {/* Brand Header - Changed to Indigo to differentiate from Student Black */}
       <div className="flex items-center gap-3 border-b border-[#eceff6] pb-5">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-black text-lg font-semibold text-white">
           NU
         </div>
         <div>
-          <p className="text-sm font-semibold text-[#17172f]">Student Portal</p>
+          <p className="text-sm font-semibold text-[#17172f]">Staff Portal</p>
           <p className="text-xs text-[#7d879b]">Housing accommodation</p>
         </div>
       </div>
@@ -50,35 +60,41 @@ export function Sidebar({
       <div className="mt-5 space-y-2">
         <SidebarItem
           icon={<LayoutDashboard size={18} />}
-          label="Overview"
-          active={activeSection === "overview"}
-          onClick={() => onSectionChange("overview")}
+          label="Dashboard"
+          active={activeSection === "dashboard"}
+          onClick={() => onSectionChange("dashboard")}
         />
         <SidebarItem
-          icon={<FileText size={18} />}
-          label="New Application"
-          active={activeSection === "apply"}
-          onClick={() => onSectionChange("apply")}
+          icon={<Search size={18} />}
+          label="Student Search"
+          active={activeSection === "search"}
+          onClick={() => onSectionChange("search")}
         />
         <SidebarItem
-          icon={<ClipboardList size={18} />}
-          label="My Applications"
-          active={activeSection === "applications"}
-          onClick={() => onSectionChange("applications")}
+          icon={<PieChart size={18} />}
+          label="Analytics"
+          active={activeSection === "analytics"}
+          onClick={() => onSectionChange("analytics")}
         />
         <SidebarItem
-          icon={<LifeBuoy size={18} />}
-          label="Support"
-          active={activeSection === "support"}
-          onClick={() => onSectionChange("support")}
+          icon={<Building2 size={18} />}
+          label="Dorm Assets"
+          active={activeSection === "dorms"}
+          onClick={() => onSectionChange("dorms")}
+        />
+        <SidebarItem
+          icon={<Settings size={18} />}
+          label="Settings"
+          active={activeSection === "settings"}
+          onClick={() => onSectionChange("settings")}
         />
       </div>
 
-      <div className="mt-8 rounded-[24px] bg-[#f7f8fc] p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#98a2b3]">
-          Signed in as
+      <div className="mt-8 rounded-[24px] bg-[#f7f8fc] p-4 border border-[#eceff6]">
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#98a2b3]">
+          signed in as
         </p>
-        <p className="mt-3 text-base font-semibold text-[#17172f]">
+        <p className="mt-3 text-base font-bold text-[#17172f] truncate">
           {displayName}
         </p>
         <p className="mt-1 break-all text-sm text-[#667085]">
