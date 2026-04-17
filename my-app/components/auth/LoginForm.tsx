@@ -49,12 +49,15 @@ export default function LoginForm() {
       <Card className="relative mx-auto grid max-w-6xl gap-8 overflow-hidden p-6 md:grid-cols-[1.1fr_0.9fr] md:p-12 items-center">
         <div className="space-y-9">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-bold tracking-wider text-[#17172f] uppercase">
-              NU{" "}
-              <span className="font-medium text-[#5e6578] capitalize tracking-normal">
-                Student Housing Portal
-              </span>
-            </p>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-black text-lg font-semibold text-white">
+              NU
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[#17172f]">
+                Student Portal
+              </p>
+              <p className="text-xs text-[#7d879b]">Housing accommodation</p>
+            </div>
           </div>
 
           <div>
@@ -100,7 +103,7 @@ export default function LoginForm() {
               </div>
             )}
 
-            <OAuthButtons locale="en" />
+            <OAuthButtons />
 
             <div className="mt-8 text-center text-sm">
               <p className="text-[#5a6475]">Use your NU email to sign in.</p>

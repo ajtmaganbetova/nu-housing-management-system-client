@@ -1,273 +1,108 @@
 "use client";
 
+import { useState, useCallback, useEffect } from "react";
+import { RefreshCw } from "lucide-react";
 import ApplicationForm from "@/components/application/ApplicationForm";
 import ApplicationsTable from "@/components/dashboard/ApplicationsTable";
-import Navbar from "@/components/ui/Navbar";
+import { Sidebar } from "@/components/dashboard/Sidebar";
+import { OverviewTab } from "@/components/dashboard/OverviewTab";
+import { SupportTab } from "@/components/dashboard/SupportTab";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { useState, useCallback, useEffect } from "react";
+import { ScrollProgress } from "@/components/ui/ScrollProgress";
 
-type StoredUser = {
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  role?: string;
-};
+export interface User {
+  id: number;
+  email: string;
+  nu_id: string;
+  role: "student" | "admin" | "staff";
+  phone: string;
+  firstName?: string; // Optional
+  lastName?: string; // Optional
+}
+export type StudentSection = "overview" | "apply" | "applications" | "support";
 
 export default function StudentDashboard() {
   const { isLoading, isAuthenticated } = useAuthGuard("student");
-
-  const [activeTab, setActiveTab] = useState<"apply" | "applications">("apply");
-  const [showContact, setShowContact] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [user, setUser] = useState<StoredUser | null>(null);
-
-  useEffect(() => {
-    const savedTab = localStorage.getItem("studentTab");
-    if (savedTab === "apply" || savedTab === "applications") {
-      setActiveTab(savedTab);
+  const [activeSection, setActiveSection] = useState<StudentSection>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("studentPortalSection");
+      return (saved as StudentSection) || "overview"; // Fallback to "overview"
     }
-
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
+    return "overview";
+  });
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("user");
       try {
-        setUser(JSON.parse(storedUser));
+        return stored ? JSON.parse(stored) : null;
       } catch {
-        setUser(null);
+        return null;
       }
     }
-  }, []);
+    return null;
+  });
 
-  const handleTabChange = (tab: "apply" | "applications") => {
-    setActiveTab(tab);
-    localStorage.setItem("studentTab", tab);
+  useEffect(() => {
+    localStorage.setItem("studentPortalSection", activeSection);
+  }, [activeSection]);
+
+  const handleSectionChange = (section: StudentSection) => {
+    setActiveSection(section);
+    localStorage.setItem("studentPortalSection", section);
   };
 
-  const handleRefresh = useCallback(() => {
-    setRefreshKey((k) => k + 1);
-  }, []);
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = "/auth/login";
+  };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <h1 className="text-xl font-bold text-gray-900">
-            Loading Student Dashboard...
-          </h1>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
-
-  const displayName = user?.firstName?.trim() || "Student";
+  if (isLoading || !isAuthenticated) return <div>Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(195,198,244,0.90),_rgba(239,241,247,0.88)_35%,_rgba(232,236,247,0.94)_70%,_rgba(211,216,243,0.98)_100%)]">
+      <div className="mx-auto max-w-[1500px] px-4 py-6 md:px-6 lg:px-8">
+        <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)] items-start">
+          <Sidebar
+            activeSection={activeSection}
+            onSectionChange={handleSectionChange}
+            user={user}
+            onLogout={handleLogout}
+          />
 
-      <div className="py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">
-              Welcome, {displayName}
-            </h1>
-            <p className="mt-1 text-gray-500 text-sm">
-              Manage your housing application and check your status
-            </p>
-          </div>
+          <main className="min-w-0 rounded-[30px] border border-white/70 bg-white/80 shadow-[0_18px_50px_rgba(122,132,173,0.12)] backdrop-blur">
+            {/* Header Logic stays here */}
+            <div className="p-5 md:p-8">
+              {activeSection === "overview" && (
+                <OverviewTab
+                  onApply={() => handleSectionChange("apply")}
+                  onTrack={() => handleSectionChange("applications")}
+                  user={user}
+                />
+              )}
 
-          <div className="mb-8">
-            <div className="border-b border-gray-200">
-              <nav className="-mb-px flex space-x-8">
-                <button
-                  onClick={() => handleTabChange("apply")}
-                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === "apply"
-                      ? "border-blue-600 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  Submit Application
-                </button>
+              {activeSection === "apply" && (
+                <div id="application-container" className="relative">
+          
+                  <ScrollProgress targetId="application-container" />
 
-                <button
-                  onClick={() => handleTabChange("applications")}
-                  className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === "applications"
-                      ? "border-blue-600 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  My Applications
-                </button>
-              </nav>
-            </div>
-          </div>
-
-          {activeTab === "apply" && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-              <div className="lg:col-span-1 space-y-6">
-                <div className="bg-blue-50 rounded-xl border border-blue-100 p-5">
-                  <h3 className="text-lg font-semibold text-blue-800 mb-2">
-                    💡 Tips
-                  </h3>
-                  <ul className="text-xs text-blue-700 space-y-1.5">
-                    <li>• All documents must be in PDF format</li>
-                    <li>• Ensure your Student ID is correct</li>
-                    <li>• Check My Applications tab to see your status</li>
-                  </ul>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                  <h2 className="text-lg text-gray-700 font-bold mb-4">
-                    Contact Housing Office
-                  </h2>
-                  <button
-                    onClick={() => setShowContact(true)}
-                    className="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    📞 HOUSING OFFICE
-                  </button>
-                </div>
-              </div>
-
-              <div className="lg:col-span-2">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-                  <ApplicationForm />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "applications" && (
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <p className="text-sm text-gray-500">
-                  Click on any application to expand its details.
-                </p>
-                <button
-                  onClick={handleRefresh}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors"
-                >
-                  Refresh
-                </button>
-              </div>
-
-              <ApplicationsTable key={refreshKey} />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {showContact && (
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setShowContact(false)}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900">
-                Contact Housing Office
-              </h2>
-              <button
-                onClick={() => setShowContact(false)}
-                className="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition text-lg"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
-                <span className="text-2xl">📧</span>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                    Email
-                  </p>
-                  <a
-                    href="mailto:student_housing@nu.edu.kz"
-                    className="text-blue-600 hover:underline text-sm font-medium"
-                  >
-                    student_housing@nu.edu.kz
-                  </a>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
-                <span className="text-2xl">🏢</span>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                    Office
-                  </p>
-                  <p className="text-sm font-medium text-gray-800">
-                    Block 24, Office 050
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
-                <span className="text-2xl">🕐</span>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                    Working Hours
-                  </p>
-                  <p className="text-sm font-medium text-gray-800">
-                    10:00 – 18:00
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
-                <span className="text-2xl">📞</span>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                    Phone Numbers
-                  </p>
-                  <div className="space-y-2 mt-1">
-                    <div className="flex items-center gap-2">
-                      <a
-                        href="tel:+77172706471"
-                        className="text-blue-600 hover:underline text-sm font-medium"
-                      >
-                        8(7172) 70-6471
-                      </a>
-                      <span className="text-gray-400 text-xs">
-                        — Yerzhan Kani
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <a
-                        href="tel:+77172708983"
-                        className="text-blue-600 hover:underline text-sm font-medium"
-                      >
-                        8(7172) 70-8983
-                      </a>
-                      <span className="text-gray-400 text-xs">
-                        — Samal Tastambekova
-                      </span>
-                    </div>
+                  <div className="mt-6">
+                    <ApplicationForm />
                   </div>
                 </div>
-              </div>
-            </div>
+              )}
 
-            <button
-              onClick={() => setShowContact(false)}
-              className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl font-medium transition-colors"
-            >
-              Close
-            </button>
-          </div>
+              {activeSection === "applications" && (
+                <div className="space-y-4">
+                  <ApplicationsTable key={refreshKey} />
+                </div>
+              )}
+
+              {activeSection === "support" && <SupportTab />}
+            </div>
+          </main>
         </div>
-      )}
+      </div>
     </div>
   );
 }

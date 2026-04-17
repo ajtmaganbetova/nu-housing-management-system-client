@@ -327,10 +327,12 @@ export default function ApplicationsTable() {
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-[#5e6578]">Your submissions</p>
           <h3 className="text-2xl font-semibold tracking-tight text-[#17172f]">
             Applications overview
           </h3>
+          <p className="text-sm font-medium text-[#5e6578]">
+            Click on any application to expand its details.
+          </p>
         </div>
         <div className="rounded-full bg-[#17172f] px-4 py-2 text-sm font-medium text-white shadow-[0_14px_30px_rgba(23,23,47,0.18)]">
           {applications.length} total

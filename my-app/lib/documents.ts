@@ -174,6 +174,7 @@ export const uploadDocument = async ({
   const response = await apiRequest("/documents/upload", {
     method: "POST",
     body: uploadData,
+    auth: true,
   });
 
   if (!response.ok) {
