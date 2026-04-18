@@ -19,6 +19,73 @@ interface Application {
   submitted_at: string;
   updated_at: string;
   rejected_reason?: string;
+  rejectedReason?: string;
+  manual_review_reason?: string;
+  manualReviewReason?: string;
+  review_reason?: string;
+  reviewReason?: string;
+  reasoning?: string;
+}
+
+function readFirstString(values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+function getApplicationReviewReason(application: Application) {
+  return readFirstString([
+    application.rejected_reason,
+    application.rejectedReason,
+    application.manual_review_reason,
+    application.manualReviewReason,
+    application.review_reason,
+    application.reviewReason,
+    application.reasoning,
+  ]);
+}
+
+function getDocumentStatus(document: ApplicationDocument) {
+  return readFirstString([
+    document.status,
+    document.review_status,
+    document.reviewStatus,
+    document.decision,
+    document.decision_status,
+    document.decisionStatus,
+  ]);
+}
+
+function getDocumentReviewReason(document: ApplicationDocument) {
+  return readFirstString([
+    document.rejected_reason,
+    document.rejectedReason,
+    document.manual_review_reason,
+    document.manualReviewReason,
+    document.review_reason,
+    document.reviewReason,
+    document.reasoning,
+    document.ai_reasoning,
+    document.aiReasoning,
+  ]);
+}
+
+function getReviewTone(status: string | null) {
+  switch (status) {
+    case "rejected":
+      return {
+        container: "border-red-200 bg-red-50 text-red-700",
+        label: "Rejection reason",
+      };
+    case "approved":
+      return null;
+    default:
+      return {
+        container: "border-amber-200 bg-amber-50 text-amber-700",
+        label: "Manual review reason",
+      };
+  }
 }
 
 function parseAdditionalInfo(info: string): Record<string, string> {
@@ -126,6 +193,8 @@ function ApplicationCard({
     string | number | null
   >(null);
   const info = parseAdditionalInfo(application.additional_info);
+  const applicationReviewReason = getApplicationReviewReason(application);
+  const applicationReviewTone = getReviewTone(application.status);
 
   const fetchDocuments = async () => {
     if (documents.length > 0) return;
@@ -287,10 +356,14 @@ function ApplicationCard({
             </div>
           </div>
 
-          {application.status === "rejected" && application.rejected_reason && (
-            <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              <span className="font-semibold">Rejection reason:</span>{" "}
-              {application.rejected_reason}
+          {applicationReviewReason && applicationReviewTone && (
+            <div
+              className={`mt-6 rounded-2xl border px-4 py-3 text-sm ${applicationReviewTone.container}`}
+            >
+              <span className="font-semibold">
+                {applicationReviewTone.label}:
+              </span>{" "}
+              {applicationReviewReason}
             </div>
           )}
 
@@ -328,25 +401,41 @@ function ApplicationCard({
                 {documents.map((doc) => (
                   <div
                     key={doc.id}
-                    className="flex items-center justify-between gap-4 rounded-2xl border border-[#edf1f8] bg-[#f8faff] px-4 py-3"
+                    className="rounded-2xl border border-[#edf1f8] bg-[#f8faff] px-4 py-3"
                   >
-                    <div>
-                      <p className="text-sm font-medium text-[#17172f]">
-                        {docTypeLabels[doc.type] || doc.type}
-                      </p>
-                      <p className="text-xs text-[#9aa3b8]">
-                        {doc.name || "PDF document"}
-                      </p>
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-medium text-[#17172f]">
+                          {docTypeLabels[doc.type] || doc.type}
+                        </p>
+                        <p className="text-xs text-[#9aa3b8]">
+                          {doc.name || "PDF document"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDocument(doc)}
+                        className="rounded-full bg-[#17172f] px-4 py-2 text-xs font-medium text-white transition hover:-translate-y-0.5"
+                      >
+                        {openingDocumentId === (doc.id ?? doc.name ?? doc.type)
+                          ? "Opening..."
+                          : "Open"}
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenDocument(doc)}
-                      className="rounded-full bg-[#17172f] px-4 py-2 text-xs font-medium text-white transition hover:-translate-y-0.5"
-                    >
-                      {openingDocumentId === (doc.id ?? doc.name ?? doc.type)
-                        ? "Opening..."
-                        : "Open"}
-                    </button>
+                    {(() => {
+                      const reason = getDocumentReviewReason(doc);
+                      const tone = getReviewTone(getDocumentStatus(doc));
+                      if (!reason || !tone) return null;
+
+                      return (
+                        <div
+                          className={`mt-3 rounded-xl border px-3 py-2 text-xs ${tone.container}`}
+                        >
+                          <span className="font-semibold">{tone.label}:</span>{" "}
+                          {reason}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
