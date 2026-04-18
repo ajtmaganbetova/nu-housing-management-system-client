@@ -121,6 +121,10 @@ export async function apiJson<T>(
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
+    if (init.auth !== false && response.status === 401) {
+      clearStoredSession();
+    }
+
     const message =
       (typeof data === "object" && data && "error" in data && data.error) ||
       response.statusText ||
@@ -144,6 +148,8 @@ export const normalizeAuthSession = (payload: unknown): AuthSession | null => {
       ? value.token
       : typeof value.accessToken === "string"
         ? value.accessToken
+        : typeof value.access_token === "string"
+          ? value.access_token
         : null;
 
   if (!user) return null;
@@ -166,7 +172,10 @@ export const fetchCurrentUser = async () => {
       ? (payload.user as AuthUser)
       : (payload as AuthUser);
 
-  const session = { token: getStoredSession().token, user };
+  const session = {
+    token: appConfig.authMode === "token" ? getStoredSession().token : null,
+    user,
+  };
   persistSession(session);
   return session;
 };
@@ -180,6 +189,10 @@ export const signInWithCredentials = async (email: string, password: string) => 
 
   const directSession = normalizeAuthSession(payload);
   if (directSession) {
+    if (appConfig.authMode === "token" && !directSession.token) {
+      throw new Error("Login response did not include an access token.");
+    }
+
     persistSession(directSession);
     return directSession;
   }
@@ -213,12 +226,17 @@ export const registerStudent = async (payload: Record<string, unknown>) =>
 export const resolveSession = async (requiredRole?: string) => {
   const stored = getStoredSession();
 
-  if (stored.user && (!requiredRole || stored.user.role === requiredRole)) {
-    return stored;
-  }
-
   if (stored.user) {
-    return requiredRole && stored.user.role !== requiredRole ? null : stored;
+    if (requiredRole && stored.user.role !== requiredRole) {
+      return null;
+    }
+
+    if (appConfig.authMode === "token" && !stored.token) {
+      clearStoredSession();
+      return null;
+    }
+
+    return stored;
   }
 
   if (appConfig.authMode !== "token" && appConfig.authMePath) {
