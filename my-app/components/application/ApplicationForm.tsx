@@ -633,6 +633,15 @@ export default function ApplicationForm() {
               </p>
             </div>
 
+                <div className="group p-4 rounded-2xl bg-white border border-[#eceff6] hover:border-indigo-200 transition-colors">
+                  <p className="text-xs font-bold text-[#17172f]">
+                    Missing Parent Information
+                  </p>
+                  <p className="text-[12px] text-[#7d879b] mt-1 italic">
+                    If information or documents for one of your parents are unavailable, submit a blank file in the corresponding section.
+                  </p>
+                </div>
+
             <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100">
               <div className="flex gap-3">
                 <Info size={16} className="text-indigo-600 shrink-0 mt-0.5" />

@@ -46,6 +46,9 @@ export const appConfig = {
     process.env.NEXT_PUBLIC_DOCUMENT_DOWNLOAD_PATH_TEMPLATE,
     "/documents/{id}/download"
   ),
+  housingSearchPath: readOptionalString(
+    process.env.NEXT_PUBLIC_HOUSING_SEARCH_PATH
+  ),
 };
 
 export const buildApiUrl = (path: string) => {

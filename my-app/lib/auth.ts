@@ -101,13 +101,20 @@ export async function apiRequest(
     init.auth === false ? null : session.token,
     hasJsonBody
   );
+  const url = buildApiUrl(path);
 
-  return fetch(buildApiUrl(path), {
-    ...init,
-    headers,
-    body: hasJsonBody ? JSON.stringify(init.jsonBody) : init.body,
-    credentials: init.includeCredentials ? "include" : "same-origin",
-  });
+  try {
+    return await fetch(url, {
+      ...init,
+      headers,
+      body: hasJsonBody ? JSON.stringify(init.jsonBody) : init.body,
+      credentials: init.includeCredentials ? "include" : "same-origin",
+    });
+  } catch {
+    throw new Error(
+      `Unable to reach the API at ${url}. Check NEXT_PUBLIC_API_BASE_URL and confirm the backend server is running.`,
+    );
+  }
 }
 
 export async function apiJson<T>(

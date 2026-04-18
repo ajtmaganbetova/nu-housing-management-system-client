@@ -91,6 +91,7 @@ function getReviewTone(status: string | null) {
 function parseAdditionalInfo(info: string): Record<string, string> {
   const result: Record<string, string> = {};
   if (!info) return result;
+
   info.split("\n").forEach((line) => {
     const colonIndex = line.indexOf(":");
     if (colonIndex !== -1) {
@@ -99,6 +100,7 @@ function parseAdditionalInfo(info: string): Record<string, string> {
       result[key] = value;
     }
   });
+
   return result;
 }
 
@@ -125,6 +127,7 @@ function formatDate(dateString: string) {
 
 function InfoRow({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
+
   return (
     <div className="grid gap-1 rounded-2xl border border-[#edf1f8] bg-white/75 px-4 py-3 md:grid-cols-[180px_1fr]">
       <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#9aa3b8]">
@@ -155,6 +158,7 @@ function ApplicationCard({ application }: { application: Application }) {
   const [openingDocumentId, setOpeningDocumentId] = useState<
     string | number | null
   >(null);
+
   const info = parseAdditionalInfo(application.additional_info);
   const applicationReviewReason = getApplicationReviewReason(application);
   const applicationReviewTone = getReviewTone(application.status);
@@ -193,6 +197,10 @@ function ApplicationCard({ application }: { application: Application }) {
     }
   };
 
+  const handlePaymentClick = () => {
+    window.location.href = `/dashboard/student/payment?applicationId=${application.id}`;
+  };
+
   return (
     <div className="overflow-hidden rounded-[30px] border border-white/70 bg-white/78 shadow-[0_18px_42px_rgba(122,132,173,0.14)] backdrop-blur-xl">
       <button
@@ -200,6 +208,7 @@ function ApplicationCard({ application }: { application: Application }) {
         className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left transition hover:bg-white/55"
         onClick={handleExpand}
       >
+
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#9aa3b8]">
             Application #{application.id}
@@ -212,6 +221,7 @@ function ApplicationCard({ application }: { application: Application }) {
             {formatDate(application.submitted_at)}
           </p>
         </div>
+
 
         <div className="flex items-center gap-3">
           <span
@@ -228,8 +238,28 @@ function ApplicationCard({ application }: { application: Application }) {
 
       {expanded && (
         <div className="border-t border-white/70 bg-[#f8faff] px-6 py-6">
+                  {application.status === "approved" && (
+                    <div className="mt-6 mb-8 rounded-2xl border border-green-200 bg-green-50 px-4 py-4 text-sm text-green-700">
+                      <p className="font-semibold">Your application has been approved.</p>
+                      <p className="mt-1">
+                        You can now continue to the payment step to confirm your housing
+                        placement.
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={handlePaymentClick}
+                        className="mt-4 inline-flex items-center justify-center rounded-xl bg-[#17172f] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2a2a4a]"
+                      >
+                        Make a payment
+                      </button>
+                    </div>
+                  )}
+
           <div className="grid gap-6 lg:grid-cols-2">
+
             <div className="space-y-3">
+
               <h5 className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9aa3b8]">
                 Student information
               </h5>
@@ -246,6 +276,8 @@ function ApplicationCard({ application }: { application: Application }) {
               <InfoRow label="ИИН" value={info["ИИН"]} />
               <InfoRow label="Passport" value={info["Passport"]} />
             </div>
+
+
 
             <div className="space-y-3">
               <h5 className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9aa3b8]">
@@ -288,11 +320,7 @@ function ApplicationCard({ application }: { application: Application }) {
             </div>
           )}
 
-          {application.status === "approved" && (
-            <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              Your application has been approved.
-            </div>
-          )}
+
 
           {info["Comments"] && (
             <div className="mt-6 rounded-[24px] border border-[#edf1f8] bg-white/80 p-4">

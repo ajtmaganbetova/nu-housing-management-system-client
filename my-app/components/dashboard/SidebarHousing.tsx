@@ -143,12 +143,6 @@ export function SidebarHousing({
         )}
 
         <div className="pt-4">
-          <SidebarItem
-            icon={<Settings size={18} />}
-            label="Settings"
-            active={activeSection === "settings"}
-            onClick={() => onSectionChange("settings")}
-          />
         </div>
       </nav>
 
