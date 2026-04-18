@@ -43,7 +43,7 @@ export function Sidebar({
         </div>
         <div>
           <p className="text-sm font-semibold text-[#17172f]">Student Portal</p>
-          <p className="text-xs text-[#7d879b]">Housing accommodation</p>
+          <p className="text-xs text-[#7d879b]">Housing System</p>
         </div>
       </div>
 
@@ -75,6 +75,7 @@ export function Sidebar({
       </div>
 
       <div className="mt-8 rounded-[24px] bg-[#f7f8fc] p-4">
+        
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#98a2b3]">
           Signed in as
         </p>

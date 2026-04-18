@@ -270,7 +270,6 @@ export default function HousingDashboard() {
             {/* Table Container */}
             <div className="">
               <HousingApplicationsTable
-                key={refreshKey}
                 onStatsUpdate={fetchStats}
               />
             </div>

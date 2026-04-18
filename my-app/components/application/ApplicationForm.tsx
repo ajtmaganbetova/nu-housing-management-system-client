@@ -262,6 +262,17 @@ export default function ApplicationForm() {
     comments: "",
   });
 
+  // Добавляем специфические казахские буквы к стандартной кириллице
+  const kazakhRegex = /^[а-яА-ЯёЁәӘіІңҢғҒүҮұҰқҚөӨһҺ\s-]+$/;
+
+  const handleChangeLocal = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    // Если строка пустая или соответствует расширенному алфавиту — обновляем стейт
+    if (value === "" || kazakhRegex.test(value)) {
+      setFormData({ ...formData, fullNameLocal: value });
+    }
+  };
+
   const [fileUploads, setFileUploads] = useState<
     Record<UploadFieldName, File[]>
   >({
@@ -333,13 +344,13 @@ export default function ApplicationForm() {
     setFileUploads((current) => ({ ...current, [name]: files }));
   };
 
-  const criteria = [
-    "Students with registered Summer courses (Registrar verified)",
-    "Confirmed internships (CAC verified)",
-    "Paid Research Assistants (Signed contract with NU Schools)",
-    "Graduation Volunteers (DSS confirmed)",
-    "Military Training participants (DSS confirmed)",
-  ];
+  // const criteria = [
+  //   "Students with registered Summer courses (Registrar verified)",
+  //   "Confirmed internships (CAC verified)",
+  //   "Paid Research Assistants (Signed contract with NU Schools)",
+  //   "Graduation Volunteers (DSS confirmed)",
+  //   "Military Training participants (DSS confirmed)",
+  // ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -699,11 +710,15 @@ export default function ApplicationForm() {
                 id="fullNameLocal"
                 name="fullNameLocal"
                 type="text"
-                label="ФИО (Cyrillic only)"
+                // Updated label to be more accurate
+                label="ФИО (Cyrillic/Kazakh characters)"
                 required
                 value={formData.fullNameLocal}
-                onChange={handleChange}
-                placeholder="ФИО"
+                onChange={handleChangeLocal}
+                placeholder="Айтмаганбетова Дильназ Талгатқызы"
+                // Native HTML5 validation pattern for Cyrillic + Kazakh extensions
+                pattern="^[А-Яа-яЁёӘәІіҢңҒғҮүҰұҚқӨөҺһ\s-]+$"
+                title="Please use Cyrillic or Kazakh alphabet characters only"
               />
             )}
 

@@ -56,7 +56,7 @@ export default function LoginForm() {
               <p className="text-sm font-semibold text-[#17172f]">
                 Student Portal
               </p>
-              <p className="text-xs text-[#7d879b]">Housing accommodation</p>
+              <p className="text-xs text-[#7d879b]">Housing System</p>
             </div>
           </div>
 

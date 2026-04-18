@@ -164,42 +164,43 @@ function ApplicationCard({
   return (
     <div className="overflow-hidden rounded-[30px] border border-white/70 bg-white/78 shadow-[0_18px_42px_rgba(122,132,173,0.14)] backdrop-blur-xl">
       <div
-        className="flex cursor-pointer items-center justify-between p-6 transition hover:bg-white/50"
+        className="grid cursor-pointer grid-cols-[auto_1fr_auto_auto] items-center gap-6 p-6 transition hover:bg-white/50"
         onClick={handleExpand}
       >
-        <div className="flex items-center gap-5">
-          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg ${
-            application.status === 'approved' ? 'bg-emerald-500' : 
-            application.status === 'rejected' ? 'bg-rose-500' : 'bg-[#6f63ff]'
-          }`}>
+        {/* 1. ID Indicator - Fixed Width */}
+        <div className="flex items-center">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-black text-white shadow-lg">
             <span className="text-xs font-bold">#{application.id}</span>
           </div>
-          </div>
-          <div>
-          <div>
-            <h4 className="text-base font-bold text-[#17172f]">
-              {info["Name Surname"] || "Anonymous Applicant"}
-            </h4>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${getStatusClasses(application.status)}`}>
-                {application.status}
-              </span>
-              <span className="text-xs text-[#9aa3b8] tracking-tight">
-                · {formatDate(application.submitted_at)}
-              </span>
-            </div>
-          </div>
-          </div>
+        </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {application.status === "pending" && (
-            <>
+        {/* 2. Name & Date - Occupies remaining space (1fr) */}
+        <div className="min-w-0">
+          <h4 className="truncate text-base font-bold text-[#17172f]">
+            {info["Name Surname"] || "Anonymous Applicant"}
+          </h4>
+          <div className="mt-0.5 flex items-center gap-2">
+            <span
+              className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${getStatusClasses(application.status)}`}
+            >
+              {application.status}
+            </span>
+            <span className="text-xs tracking-tight text-[#9aa3b8]">
+              · {formatDate(application.submitted_at)}
+            </span>
+          </div>
+        </div>
+
+        {/* 3. Actions & Status Badge - Fixed container to prevent shifting */}
+        <div className="flex items-center justify-end gap-3 min-w-[180px]">
+          {application.status === "pending" ? (
+            <div className="flex items-center gap-2">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onApprove(application.id);
                 }}
-                className="rounded-full bg-[#17172f] px-4 py-2 text-xs font-medium text-white transition hover:-translate-y-0.5"
+                className="rounded-full bg-[#17172f] px-5 py-2 text-xs font-bold text-white transition hover:scale-105 active:scale-95"
               >
                 Approve
               </button>
@@ -208,19 +209,25 @@ function ApplicationCard({
                   e.stopPropagation();
                   onReject(application.id);
                 }}
-                className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-medium text-red-700 transition hover:-translate-y-0.5"
+                className="rounded-full border border-red-100 bg-red-50 px-5 py-2 text-xs font-bold text-red-600 transition hover:scale-105 active:scale-95"
               >
                 Reject
               </button>
-            </>
+            </div>
+          ) : (
+            <span
+              className={`rounded-full border px-4 py-1.5 text-xs font-bold shadow-sm ${getStatusClasses(application.status)}`}
+            >
+              {application.status.charAt(0).toUpperCase() +
+                application.status.slice(1)}
+            </span>
           )}
-          <span
-            className={`rounded-full border px-3 py-1 text-xs font-semibold ${getStatusClasses(application.status)}`}
-          >
-            {application.status.charAt(0).toUpperCase() +
-              application.status.slice(1)}
-          </span>
-          <span className="text-sm text-[#7d879b]">
+          {/* <span className="text-sm font-medium text-[#7d879b]">
+            {expanded ? "Hide" : "Open"}
+          </span> */}
+        </div>
+        <div className="text-right">
+          <span className="text-sm font-medium text-[#7d879b]">
             {expanded ? "Hide" : "Open"}
           </span>
         </div>

@@ -91,7 +91,7 @@ export function OverviewTab({ onApply, onTrack, user }: OverviewTabProps) {
       <div className="flex flex-col gap-2 w-full">
         <div className="flex items-center gap-2 text-[#6f63ff] font-medium text-sm">
           <Zap size={16} className="fill-[#6f63ff]" />
-          <span>Summer 2026 Intake is Live</span>
+          <span>Fall 2025 Intake is Live</span>
         </div>
         <h1 className="text-3xl font-bold tracking-tight text-[#17172f] md:text-5xl">
           {`Welcome, ${first}!`}

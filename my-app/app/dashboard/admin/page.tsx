@@ -1,176 +1,191 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import Navbar from "@/components/ui/Navbar";
-import { apiJson } from "@/lib/auth";
-import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import {
+  Users,
+  UserPlus,
+  History,
+  Settings,
+  LogOut,
+  Search,
+  ShieldCheck,
+  Mail,
+  Phone,
+  Fingerprint,
+} from "lucide-react";
+import {
+  SidebarHousing,
+  type HousingSection,
+} from "@/components/dashboard/SidebarHousing";
 
-interface Stats {
-  users: number;
-  applications: number;
-  approved: number;
+interface User {
+  id: number;
+  nu_id: string;
+  email: string;
+  role_id: number;
+  phone: string | null;
+  created_at: string;
 }
 
-export default function AdminDashboard() {
-  const { isLoading, isAuthenticated } = useAuthGuard("admin");
-  const [stats, setStats] = useState<Stats | null>(null);
-  const router = useRouter();
+const roleLabel: Record<number, string> = {
+  1: "Student",
+  2: "Housing Staff",
+  3: "Admin",
+};
 
-  const fetchStats = useCallback(async () => {
-    try {
-      const statsData = await apiJson<Stats>("/admin/stats", {
-        method: "GET",
-      });
-      setStats(statsData);
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-    }
-  }, []);
+export default function UsersPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  // Mocking user state for the sidebar (in real app, get from auth context)
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    if (isLoading || !isAuthenticated) return;
-    const timeoutId = window.setTimeout(() => {
-      void fetchStats();
-    }, 0);
-    return () => window.clearTimeout(timeoutId);
-  }, [fetchStats, isAuthenticated, isLoading]);
+    const fetchUsers = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("http://localhost:8080/admin/users", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setUsers(data.users ?? data);
+      } catch (err) {
+        console.error("failed to load users:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, []);
 
-  if (isLoading || !isAuthenticated) {
+  const filteredUsers = useMemo(() => {
+    const q = search.toLowerCase();
+    return users.filter(
+      (u) =>
+        u.nu_id.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
+    );
+  }, [users, search]);
+
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <h1 className="text-xl font-bold text-gray-900">Loading Admin Dashboard...</h1>
-        </div>
+      <div className="min-h-screen bg-[#f8faff] flex items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#d9e0f2] border-t-[#6f63ff]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <div className="py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(195,198,244,0.90),_rgba(239,241,247,0.88)_35%,_rgba(232,236,247,0.94)_70%,_rgba(211,216,243,0.98)_100%)]">
+      <div className="mx-auto max-w-[1600px] px-4 py-8 md:px-6 lg:px-10">
+        <div className="grid gap-10 xl:grid-cols-[300px_1fr] items-start">
+          {/* Reuse the Sidebar we built */}
+          <SidebarHousing
+            activeSection="search" // Setting search as active for this page
+            onSectionChange={(s) => router.push(`/dashboard/admin/${s}`)}
+            user={currentUser}
+            onLogout={() => {
+              localStorage.clear();
+              router.push("/auth/login");
+            }}
+          />
 
-          {/* Header */}
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="mt-1 text-gray-500 text-sm">System administration and monitoring</p>
-            </div>
-            <button
-              onClick={fetchStats}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors"
-            >
-              Refresh
-            </button>
-          </div>
-
-          {/* Stats Overview */}
-          {stats ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-white shadow-sm rounded-xl border border-gray-100 p-6">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white text-lg">👥</div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Total Users</p>
-                    <p className="text-2xl font-semibold text-gray-900">{stats.users}</p>
-                  </div>
+          {/* MAIN CONTENT AREA */}
+          <div className="min-w-0 rounded-[40px] border border-white/70 bg-white/80 p-6 md:p-10 shadow-[0_18px_50px_rgba(122,132,173,0.12)] backdrop-blur-md">
+            {/* HEADER */}
+            <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-[#6f63ff] font-bold text-xs uppercase tracking-widest">
+                  <ShieldCheck size={14} />
+                  <span>Administrative Control</span>
                 </div>
-              </div>
-
-              <div className="bg-white shadow-sm rounded-xl border border-gray-100 p-6">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white text-lg">📋</div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Applications</p>
-                    <p className="text-2xl font-semibold text-gray-900">{stats.applications}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white shadow-sm rounded-xl border border-gray-100 p-6">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center text-white text-lg">✅</div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Approved</p>
-                    <p className="text-2xl font-semibold text-gray-900">{stats.approved}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-8">
-              <div className="flex items-center gap-3">
-                <span className="text-yellow-600">⚠️</span>
-                <p className="text-sm text-yellow-700">
-                  Stats not available. Make sure you&apos;re logged in as admin.
+                <h1 className="text-3xl font-extrabold tracking-tight text-[#17172f] md:text-4xl">
+                  User Directory
+                </h1>
+                <p className="text-[#7d879b] text-sm">
+                  Review system access and manage credentials for {users.length}{" "}
+                  registered accounts.
                 </p>
               </div>
-            </div>
-          )}
 
-          {/* Admin Features */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-lg font-semibold mb-2 text-gray-900">User Management</h2>
-              <p className="text-sm text-gray-500 mb-4">Manage system users and permissions.</p>
-              <div className="flex gap-3">
-                <button
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                  onClick={() => router.push("/dashboard/admin/users")}
-                >
-                  View All Users
-                </button>
-                <button
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                  onClick={() => router.push("/dashboard/admin/users/create")}
-                >
-                  Create User
-                </button>
+              {/* SEARCH BAR */}
+              <div className="relative group">
+                <Search
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9aa3b8] group-focus-within:text-[#6f63ff] transition-colors"
+                  size={18}
+                />
+                <input
+                  type="text"
+                  placeholder="Search by ID or Email..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full md:w-80 bg-white border border-[#edf1f8] rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-4 focus:ring-[#6f63ff]/10 focus:border-[#6f63ff] transition-all shadow-sm"
+                />
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-lg font-semibold mb-2 text-gray-900">System Monitoring</h2>
-              <p className="text-sm text-gray-500 mb-4">Monitor system health and performance.</p>
-              <div className="flex gap-3">
-                <button
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                  onClick={() => router.push("/dashboard/admin/logs")}
-                >
-                  View Logs
-                </button>
-                <button
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                  onClick={() => router.push("/dashboard/admin/settings")}
-                >
-                  System Settings
-                </button>
-              </div>
-            </div>
+            {/* USERS LIST (Replacing Table with Premium Cards) */}
+            <div className="space-y-4">
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((u) => (
+                  <div
+                    key={u.id}
+                    className="group flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-[28px] border border-white bg-white/50 hover:bg-white transition-all hover:shadow-xl hover:-translate-y-0.5"
+                  >
+                    <div className="flex items-center gap-5">
+                      <div className="h-14 w-14 rounded-[20px] bg-[#f3f4f8] flex items-center justify-center text-[#17172f] font-bold shadow-inner group-hover:bg-[#6f63ff] group-hover:text-white transition-all duration-300">
+                        {u.nu_id.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-[#17172f]">
+                            {u.email}
+                          </h4>
+                          <span
+                            className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${
+                              u.role_id === 3
+                                ? "border-amber-200 bg-amber-50 text-amber-700"
+                                : u.role_id === 2
+                                  ? "border-[#6f63ff]/20 bg-[#6f63ff]/5 text-[#6f63ff]"
+                                  : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            }`}
+                          >
+                            {roleLabel[u.role_id]}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                          <span className="flex items-center gap-1.5 text-xs text-[#9aa3b8]">
+                            <Fingerprint size={12} /> {u.nu_id}
+                          </span>
+                          <span className="flex items-center gap-1.5 text-xs text-[#9aa3b8]">
+                            <Phone size={12} /> {u.phone || "No phone"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:col-span-2">
-              <h2 className="text-lg font-semibold mb-2 text-gray-900">Database Operations</h2>
-              <p className="text-sm text-gray-500 mb-4">Administrative database functions and maintenance.</p>
-              <div className="flex gap-3">
-                <button
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                  onClick={() => router.push("/dashboard/admin/backup")}
-                >
-                  Backup Database
-                </button>
-                <button
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                  onClick={() => router.push("/dashboard/admin/maintenance")}
-                >
-                  System Maintenance
-                </button>
-              </div>
+                    <div className="flex items-center gap-2">
+                      <button className="h-10 px-4 rounded-xl text-xs font-bold text-[#7d879b] hover:bg-gray-100 transition-colors">
+                        Edit Details
+                      </button>
+                      <button className="h-10 px-4 rounded-xl text-xs font-bold text-rose-500 hover:bg-rose-50 transition-colors">
+                        Revoke
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-20 text-center rounded-[32px] border-2 border-dashed border-[#edf1f8]">
+                  <p className="text-[#9aa3b8] font-medium">
+                    No users match your criteria.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
-
         </div>
       </div>
     </div>
