@@ -7,10 +7,20 @@ import {
   listApplicationDocuments,
   resolveDocumentDownloadUrl,
 } from "@/lib/documents";
+import {
+  getApplicantFullName,
+  getApplicantType,
+  getPassportNumber,
+  parseAdditionalInfo,
+  readFirstString,
+} from "@/lib/housing-applications";
 
 interface Application {
   id: number;
   student_id: number;
+  applicant_type?: string;
+  fio?: string;
+  passport_number?: string;
   year: number;
   major: string;
   gender: string;
@@ -31,13 +41,6 @@ interface Application {
   isPayed?: boolean;
   payment_status?: string;
   paymentStatus?: string;
-}
-
-function readFirstString(values: unknown[]) {
-  for (const value of values) {
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return null;
 }
 
 function getApplicationReviewReason(application: Application) {
@@ -92,20 +95,6 @@ function getReviewTone(status: string | null) {
         label: "Manual review reason",
       };
   }
-}
-
-function parseAdditionalInfo(info: string): Record<string, string> {
-  const result: Record<string, string> = {};
-  if (!info) return result;
-  info.split("\n").forEach((line) => {
-    const colonIndex = line.indexOf(":");
-    if (colonIndex !== -1) {
-      const key = line.substring(0, colonIndex).trim();
-      const value = line.substring(colonIndex + 1).trim();
-      result[key] = value;
-    }
-  });
-  return result;
 }
 
 function getStatusClasses(status: string) {
@@ -221,6 +210,10 @@ function ApplicationCard({
     string | number | null
   >(null);
   const info = parseAdditionalInfo(application.additional_info);
+  const applicantName =
+    getApplicantFullName(application, info) || "Anonymous Applicant";
+  const applicantType = getApplicantType(application, info);
+  const passportNumber = getPassportNumber(application, info);
   const applicationReviewReason = getApplicationReviewReason(application);
   const applicationReviewTone = getReviewTone(application.status);
 
@@ -274,7 +267,7 @@ function ApplicationCard({
         {/* 2. Name & Date - Occupies remaining space (1fr) */}
         <div className="min-w-0">
           <h4 className="truncate text-base font-bold text-[#17172f]">
-            {info["Name Surname"] || "Anonymous Applicant"}
+            {applicantName}
           </h4>
           <div className="mt-0.5 flex items-center gap-2">
             <span
@@ -337,12 +330,15 @@ function ApplicationCard({
               <h5 className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9aa3b8]">
                 Student information
               </h5>
-              <InfoRow label="Applicant type" value={info["Applicant Type"]} />
+              <InfoRow
+                label="Applicant type"
+                value={applicantType ?? undefined}
+              />
               <InfoRow
                 label="Student ID"
                 value={info["Student ID"] || String(application.student_id)}
               />
-              <InfoRow label="Name surname" value={info["Name Surname"]} />
+              <InfoRow label="Name surname" value={applicantName} />
               <InfoRow label="ФИО" value={info["ФИО"]} />
               <InfoRow
                 label="Gender"
@@ -351,7 +347,10 @@ function ApplicationCard({
               <InfoRow label="Phone" value={info["Phone"]} />
               <InfoRow label="Date of birth" value={info["Date of Birth"]} />
               <InfoRow label="ИИН" value={info["ИИН"]} />
-              <InfoRow label="Passport" value={info["Passport"]} />
+              <InfoRow
+                label="Passport"
+                value={passportNumber ?? undefined}
+              />
             </div>
 
             <div className="space-y-3">

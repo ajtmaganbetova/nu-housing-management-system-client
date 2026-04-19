@@ -14,6 +14,10 @@ import {
   resolveDocumentDownloadUrl,
   uploadDocument,
 } from "@/lib/documents";
+import {
+  formatRoomAllocation,
+  type RoomAllocation,
+} from "@/lib/housing-applications";
 
 interface Application {
   id: number;
@@ -35,6 +39,13 @@ interface Application {
   review_reason?: string;
   reviewReason?: string;
   reasoning?: string;
+  room_allocation?: RoomAllocation | null;
+  roomAllocation?: RoomAllocation | null;
+  block?: number | string | null;
+  room_number?: number | string | null;
+  roomNumber?: number | string | null;
+  bed_number?: number | string | null;
+  bedNumber?: number | string | null;
 }
 
 interface ApplicationPatchPayload {
@@ -413,6 +424,9 @@ function ApplicationCard({
   const currentYear = getApplicationYear(application, info);
   const currentMajor = getApplicationMajor(application, info);
   const currentRoomPreference = getRoomPreference(application, info);
+  const assignedRoom = formatRoomAllocation(
+    application.room_allocation ?? application.roomAllocation ?? application,
+  );
   const applicationReviewReason = getApplicationReviewReason(application);
   const applicationReviewTone = getReviewTone(application.status);
   const editFormId = `application-edit-${application.id}`;
@@ -598,10 +612,15 @@ function ApplicationCard({
         <div className="border-t border-white/70 bg-[#f8faff] px-6 py-6">
                   {application.status === "approved" && (
                     <div className="mt-6 mb-8 rounded-2xl border border-green-200 bg-green-50 px-4 py-4 text-sm text-green-700">
-                      <p className="font-semibold">Your application has been approved.</p>
+                      <p className="font-semibold">Approved</p>
+                      {assignedRoom && (
+                        <p className="mt-1 text-green-800">
+                          Your room number: {assignedRoom}
+                        </p>
+                      )}
                       <p className="mt-1">
-                        You can now continue to the payment step to confirm your housing
-                        placement.
+                        You can now continue to the payment step to confirm
+                        your housing placement.
                       </p>
 
                       <button

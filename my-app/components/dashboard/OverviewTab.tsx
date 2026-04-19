@@ -1,4 +1,11 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { apiJson } from "@/lib/auth";
+import {
+  formatRoomAllocation,
+  type RoomAllocation,
+} from "@/lib/housing-applications";
 import {
   ArrowRight,
   ClipboardCheck,
@@ -7,6 +14,19 @@ import {
   Zap,
   LucideIcon,
 } from "lucide-react";
+
+interface StudentApplicationSummary {
+  id: number;
+  status: string;
+  submitted_at?: string;
+  room_allocation?: RoomAllocation | null;
+  roomAllocation?: RoomAllocation | null;
+  block?: number | string | null;
+  room_number?: number | string | null;
+  roomNumber?: number | string | null;
+  bed_number?: number | string | null;
+  bedNumber?: number | string | null;
+}
 
 function formatNameFromEmail(email?: string) {
   if (!email) return { first: "Student", full: "Student" };
@@ -85,6 +105,42 @@ export function InfoCard({
 
 export function OverviewTab({ onApply, onTrack, user }: OverviewTabProps) {
   const { first } = formatNameFromEmail(user?.email);
+  const [approvedApplication, setApprovedApplication] =
+    useState<StudentApplicationSummary | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchApprovedApplication = async () => {
+      try {
+        const applications =
+          (await apiJson<StudentApplicationSummary[]>("/applications/my", {
+            method: "GET",
+          })) || [];
+
+        if (cancelled) return;
+
+        setApprovedApplication(
+          applications.find((application) => application.status === "approved") ??
+            null,
+        );
+      } catch (error) {
+        console.error("Failed to load application status:", error);
+      }
+    };
+
+    void fetchApprovedApplication();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const assignedRoom = formatRoomAllocation(
+    approvedApplication?.room_allocation ??
+      approvedApplication?.roomAllocation ??
+      approvedApplication,
+  );
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -101,6 +157,17 @@ export function OverviewTab({ onApply, onTrack, user }: OverviewTabProps) {
           approval stages, and secure your housing for the upcoming term.
         </p>
       </div>
+
+      {approvedApplication && (
+        <div className="rounded-[24px] border border-green-200 bg-green-50 px-5 py-4 text-green-700">
+          <p className="text-sm font-bold">Approved</p>
+          {assignedRoom && (
+            <p className="mt-1 text-sm text-green-800">
+              Your room number: {assignedRoom}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Visual Info Cards */}
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">

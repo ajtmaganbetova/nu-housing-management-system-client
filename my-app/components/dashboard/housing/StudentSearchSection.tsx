@@ -6,11 +6,20 @@ import {
   listApplicationDocuments,
   resolveDocumentDownloadUrl,
 } from "@/lib/documents";
+import {
+  getApplicantFullName,
+  getApplicantType,
+  getPassportNumber,
+  parseAdditionalInfo,
+} from "@/lib/housing-applications";
 import { RefreshCw, Search, UserRound } from "lucide-react";
 
 interface Application {
   id: number;
   student_id: number;
+  applicant_type?: string;
+  fio?: string;
+  passport_number?: string;
   year: number;
   major: string;
   gender: string;
@@ -19,23 +28,6 @@ interface Application {
   submitted_at: string;
   updated_at: string;
   rejected_reason?: string;
-}
-
-function parseAdditionalInfo(info: string): Record<string, string> {
-  const result: Record<string, string> = {};
-  if (!info) return result;
-
-  info.split("\n").forEach((line) => {
-    const colonIndex = line.indexOf(":");
-    if (colonIndex === -1) return;
-
-    const key = line.substring(0, colonIndex).trim();
-    const value = line.substring(colonIndex + 1).trim();
-
-    if (key) result[key] = value;
-  });
-
-  return result;
 }
 
 function formatDate(dateString: string) {
@@ -98,7 +90,10 @@ function SearchResultCard({ application }: { application: Application }) {
     string | number | null
   >(null);
   const info = parseAdditionalInfo(application.additional_info);
-  const fullName = info["Name Surname"] || "Anonymous Applicant";
+  const fullName =
+    getApplicantFullName(application, info) || "Anonymous Applicant";
+  const applicantType = getApplicantType(application, info);
+  const passportNumber = getPassportNumber(application, info);
   const email = info["Email"] || info["NU Email"] || info["Personal Email"];
   const studentId = info["Student ID"] || String(application.student_id);
   const school = info["School"] || application.major;
@@ -194,24 +189,39 @@ function SearchResultCard({ application }: { application: Application }) {
               <h5 className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9aa3b8]">
                 Student information
               </h5>
-              <InfoRow label="Applicant type" value={info["Applicant Type"]} />
+              <InfoRow
+                label="Applicant type"
+                value={applicantType ?? undefined}
+              />
               <InfoRow label="Student ID" value={studentId} />
-              <InfoRow label="Name surname" value={info["Name Surname"]} />
-              <InfoRow label="Gender" value={info["Gender"] || application.gender} />
+              <InfoRow label="Name surname" value={fullName} />
+              <InfoRow
+                label="Gender"
+                value={info["Gender"] || application.gender}
+              />
               <InfoRow label="Phone" value={info["Phone"]} />
               <InfoRow label="Email" value={email} />
               <InfoRow label="Date of birth" value={info["Date of Birth"]} />
-              <InfoRow label="Passport" value={info["Passport"]} />
+              <InfoRow
+                label="Passport"
+                value={passportNumber ?? undefined}
+              />
             </div>
 
             <div className="space-y-3">
               <h5 className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9aa3b8]">
                 Academic and housing details
               </h5>
-              <InfoRow label="School" value={info["School"] || application.major} />
+              <InfoRow
+                label="School"
+                value={info["School"] || application.major}
+              />
               <InfoRow label="Level" value={info["Level"]} />
               <InfoRow label="Major" value={info["Major"] || application.major} />
-              <InfoRow label="Year" value={info["Year of Study"] || String(application.year)} />
+              <InfoRow
+                label="Year"
+                value={info["Year of Study"] || String(application.year)}
+              />
               <InfoRow
                 label="Apartment in Astana"
                 value={info["Apartment in Astana"]}
