@@ -1,19 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   LayoutDashboard,
   Users,
   UserPlus,
   History,
-  Settings,
   LogOut,
   Search,
   PieChart,
   Building2,
-  ShieldCheck,
-  ClipboardList,
-  UserCog,
 } from "lucide-react";
 
 export type HousingSection =
@@ -35,18 +31,23 @@ export function SidebarHousing({
   onSectionChange: (section: HousingSection) => void;
   onLogout: () => void;
 }) {
-  const [user, setUser] = useState<any>(null);
-  const [mounted, setMounted] = useState(false);
+  const [user] = useState<{
+    role?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  } | null>(() => {
+    if (typeof window === "undefined") return null;
 
-  useEffect(() => {
-    setMounted(true);
     const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
+    if (!storedUser) return null;
 
-  if (!mounted) return <div className="w-[280px]" />;
+    try {
+      return JSON.parse(storedUser);
+    } catch {
+      return null;
+    }
+  });
 
   const isAdmin = user?.role === "admin";
   const displayName =
@@ -124,7 +125,7 @@ export function SidebarHousing({
             />
             <SidebarItem
               icon={<Building2 size={18} />}
-              label="Dorm Inventory"
+              label="Dorm Residents"
               active={activeSection === "dorms"}
               onClick={() => onSectionChange("dorms")}
             />
@@ -173,7 +174,17 @@ export function SidebarHousing({
   );
 }
 
-function SidebarItem({ icon, label, active, onClick }: any) {
+function SidebarItem({
+  icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}

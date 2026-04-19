@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import HousingApplicationsTable from "@/components/dashboard/HousingApplicationsTable";
 import StudentSearchSection from "@/components/dashboard/housing/StudentSearchSection";
-import DormInventorySection from "@/components/dashboard/housing/DormInventorySection";
+import DormResidentsSection from "@/components/dashboard/housing/DormResidentsSection";
 import OccupancyStatsSection from "@/components/dashboard/housing/OccupancyStatsSection";
 
 import { apiJson } from "@/lib/auth";
@@ -415,7 +415,7 @@ export default function HousingDashboard() {
             )}
 
             {activeSection === "search" && <StudentSearchSection />}
-            {activeSection === "dorms" && <DormInventorySection />}
+            {activeSection === "dorms" && <DormResidentsSection />}
             {activeSection === "analytics" && <OccupancyStatsSection />}
           </div>
         </div>

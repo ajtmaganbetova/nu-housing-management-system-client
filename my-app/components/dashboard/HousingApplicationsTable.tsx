@@ -25,6 +25,12 @@ interface Application {
   review_reason?: string;
   reviewReason?: string;
   reasoning?: string;
+  paid?: boolean;
+  payed?: boolean;
+  is_paid?: boolean;
+  isPayed?: boolean;
+  payment_status?: string;
+  paymentStatus?: string;
 }
 
 function readFirstString(values: unknown[]) {
@@ -121,6 +127,28 @@ function formatDate(dateString: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function isApplicationPaid(application: Application) {
+  const booleanValue = [
+    application.paid,
+    application.payed,
+    application.is_paid,
+    application.isPayed,
+  ].find((value) => typeof value === "boolean");
+
+  if (typeof booleanValue === "boolean") return booleanValue;
+
+  const normalizedStatus = readFirstString([
+    application.payment_status,
+    application.paymentStatus,
+  ])?.toLowerCase();
+
+  return normalizedStatus
+    ? ["paid", "payed", "completed", "success", "successful", "succeeded"].includes(
+        normalizedStatus,
+      )
+    : false;
 }
 
 function InfoRow({ label, value }: { label: string; value?: string }) {
@@ -461,6 +489,7 @@ export default function HousingApplicationsTable({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [showPayedOnly, setShowPayedOnly] = useState(false);
 
   useEffect(() => {
     void fetchApplications();
@@ -511,10 +540,14 @@ export default function HousingApplicationsTable({
     }
   };
 
-  const filteredApplications =
+  const statusFilteredApplications =
     filterStatus === "all"
       ? applications
       : applications.filter((app) => app.status === filterStatus);
+
+  const filteredApplications = showPayedOnly
+    ? statusFilteredApplications.filter((app) => isApplicationPaid(app))
+    : statusFilteredApplications;
 
   if (isLoading) {
     return (
@@ -541,15 +574,45 @@ export default function HousingApplicationsTable({
           </h3>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {["all", "pending", "approved", "rejected"].map((status) => (
+        <div className="flex flex-wrap items-center gap-3">
+          {["all", "pending"].map((status) => (
             <FilterChip
               key={status}
               active={filterStatus === status}
               label={status.charAt(0).toUpperCase() + status.slice(1)}
-              onClick={() => setFilterStatus(status)}
+              onClick={() => {
+                setFilterStatus(status);
+                setShowPayedOnly(false);
+              }}
             />
           ))}
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <FilterChip
+              active={filterStatus === "approved"}
+              label="Approved"
+              onClick={() => setFilterStatus("approved")}
+            />
+            <FilterChip
+              active={showPayedOnly}
+              label="Payed"
+              onClick={() => {
+                setFilterStatus("approved");
+                setShowPayedOnly((current) =>
+                  filterStatus === "approved" ? !current : true,
+                );
+              }}
+            />
+          </div>
+
+          <FilterChip
+            active={filterStatus === "rejected"}
+            label="Closed"
+            onClick={() => {
+              setFilterStatus("rejected");
+              setShowPayedOnly(false);
+            }}
+          />
         </div>
       </div>
       {filteredApplications.length === 0 ? (
