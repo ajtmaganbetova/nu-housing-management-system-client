@@ -680,7 +680,7 @@ function ApplicationCard({
                   {isSaving ? "Saving..." : "Save"}
                 </button>
               </div>
-            ) : (
+            ) : application.status !== "approved" ? (
               <button
                 type="button"
                 onClick={handleStartEdit}
@@ -688,7 +688,7 @@ function ApplicationCard({
               >
                 Edit Submission
               </button>
-            )}
+            ) : null}
           </div>
 
           <form id={editFormId} onSubmit={handleSaveEdit}>
