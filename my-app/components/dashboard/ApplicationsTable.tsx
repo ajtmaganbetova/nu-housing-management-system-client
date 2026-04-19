@@ -46,6 +46,14 @@ interface Application {
   roomNumber?: number | string | null;
   bed_number?: number | string | null;
   bedNumber?: number | string | null;
+  paid?: boolean;
+  payed?: boolean;
+  is_paid?: boolean;
+  isPayed?: boolean;
+  payment_status?: string;
+  paymentStatus?: string;
+  paid_at?: string | null;
+  paidAt?: string | null;
 }
 
 interface ApplicationPatchPayload {
@@ -321,6 +329,32 @@ function formatDate(dateString: string) {
   });
 }
 
+function isApplicationPaid(application: Application) {
+  const booleanValue = [
+    application.paid,
+    application.payed,
+    application.is_paid,
+    application.isPayed,
+  ].find((value) => typeof value === "boolean");
+
+  if (typeof booleanValue === "boolean") return booleanValue;
+
+  const normalizedStatus = readFirstString([
+    application.payment_status,
+    application.paymentStatus,
+  ])?.toLowerCase();
+
+  return normalizedStatus
+    ? ["paid", "payed", "completed", "success", "successful", "succeeded"].includes(
+        normalizedStatus,
+      )
+    : false;
+}
+
+function getPaidAt(application: Application) {
+  return readFirstString([application.paid_at, application.paidAt]);
+}
+
 function InfoRow({
   label,
   value,
@@ -445,6 +479,9 @@ function ApplicationCard({
   const applicationReviewReason = getApplicationReviewReason(application);
   const applicationReviewTone = getReviewTone(application.status);
   const editFormId = `application-edit-${application.id}`;
+  const isPaid = isApplicationPaid(application);
+  const paidAt = getPaidAt(application);
+  const isApproved = application.status.toLowerCase() === "approved";
 
   useEffect(() => {
     setEditFields(createEditFields(application));
@@ -533,6 +570,7 @@ function ApplicationCard({
   };
 
   const handleStartEdit = () => {
+    if (isApproved) return;
     setEditFields(createEditFields(application));
     setEditError("");
     setEditSuccess("");
@@ -617,6 +655,11 @@ function ApplicationCard({
             {application.status.charAt(0).toUpperCase() +
               application.status.slice(1)}
           </span>
+          {isPaid && (
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+              Paid
+            </span>
+          )}
           <span className="text-sm text-[#7d879b]">
             {expanded ? "Hide" : "Open"}
           </span>
@@ -627,24 +670,48 @@ function ApplicationCard({
         <div className="border-t border-white/70 bg-[#f8faff] px-6 py-6">
                   {application.status === "approved" && (
                     <div className="mt-6 mb-8 rounded-2xl border border-green-200 bg-green-50 px-4 py-4 text-sm text-green-700">
-                      <p className="font-semibold">Approved</p>
-                      {assignedRoom && (
+                      {isPaid ? (
+                        <>
+                          <p className="font-semibold">
+                            Your application is approved and paid.
+                          </p>
+                          {assignedRoom && (
                         <p className="mt-1 text-green-800">
                           Your room number: {assignedRoom}
                         </p>
                       )}
-                      <p className="mt-1">
-                        You can now continue to the payment step to confirm
-                        your housing placement.
-                      </p>
 
-                      <button
-                        type="button"
-                        onClick={handlePaymentClick}
-                        className="mt-4 inline-flex items-center justify-center rounded-xl bg-[#17172f] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2a2a4a]"
-                      >
-                        Make a payment
-                      </button>
+                          <p className="mt-1">
+                            Housing payment has been received and your place is
+                            confirmed.
+                            {paidAt ? ` Paid on ${formatDate(paidAt)}.` : ""}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-semibold">
+                            Your application has been approved.
+                          </p>
+                          {assignedRoom && (
+                        <p className="mt-1 text-green-800">
+                          Your room number: {assignedRoom}
+                        </p>
+                      )}
+
+                          <p className="mt-1">
+                            You can now continue to the payment step to confirm
+                            your housing placement.
+                          </p>
+
+                          <button
+                            type="button"
+                            onClick={handlePaymentClick}
+                            className="mt-4 inline-flex items-center justify-center rounded-xl bg-[#17172f] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2a2a4a]"
+                          >
+                            Make a payment
+                          </button>
+                        </>
+                      )}
                     </div>
                   )}
 
@@ -905,22 +972,41 @@ export default function ApplicationsTable() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const fetchApplications = async () => {
+    try {
+      const apps = await apiJson<Application[]>("/applications/my", {
+        method: "GET",
+      });
+      setApplications(Array.isArray(apps) ? apps : []);
+      setError("");
+    } catch (err) {
+      console.error("Error fetching applications:", err);
+      setError("Failed to load applications. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchApplications = async () => {
-      try {
-        const apps = await apiJson<Application[]>("/applications/my", {
-          method: "GET",
-        });
-        setApplications(Array.isArray(apps) ? apps : []);
-      } catch (err) {
-        console.error("Error fetching applications:", err);
-        setError("Failed to load applications. Please try again.");
-      } finally {
-        setIsLoading(false);
+    void fetchApplications();
+
+    const handleWindowFocus = () => {
+      void fetchApplications();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void fetchApplications();
       }
     };
 
-    void fetchApplications();
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   const handleApplicationUpdated = (updatedApplication: Application) => {

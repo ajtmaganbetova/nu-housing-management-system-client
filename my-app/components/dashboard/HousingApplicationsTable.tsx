@@ -41,6 +41,8 @@ interface Application {
   isPayed?: boolean;
   payment_status?: string;
   paymentStatus?: string;
+  paid_at?: string | null;
+  paidAt?: string | null;
 }
 
 function getApplicationReviewReason(application: Application) {
@@ -140,6 +142,10 @@ function isApplicationPaid(application: Application) {
     : false;
 }
 
+function getPaidAt(application: Application) {
+  return readFirstString([application.paid_at, application.paidAt]);
+}
+
 function InfoRow({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
   return (
@@ -216,6 +222,8 @@ function ApplicationCard({
   const passportNumber = getPassportNumber(application, info);
   const applicationReviewReason = getApplicationReviewReason(application);
   const applicationReviewTone = getReviewTone(application.status);
+  const isPaid = isApplicationPaid(application);
+  const paidAt = getPaidAt(application);
 
   const fetchDocuments = async () => {
     if (documents.length > 0) return;
@@ -275,6 +283,11 @@ function ApplicationCard({
             >
               {application.status}
             </span>
+            {isPaid && (
+              <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-700">
+                Paid
+              </span>
+            )}
             <span className="text-xs tracking-tight text-[#9aa3b8]">
               · {formatDate(application.submitted_at)}
             </span>
@@ -396,7 +409,9 @@ function ApplicationCard({
 
           {application.status === "approved" && (
             <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              Application approved successfully.
+              {isPaid
+                ? `Application approved and paid${paidAt ? ` on ${formatDate(paidAt)}.` : "."}`
+                : "Application approved successfully."}
             </div>
           )}
 
@@ -594,7 +609,7 @@ export default function HousingApplicationsTable({
             />
             <FilterChip
               active={showPayedOnly}
-              label="Payed"
+              label="Paid"
               onClick={() => {
                 setFilterStatus("approved");
                 setShowPayedOnly((current) =>
