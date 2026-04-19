@@ -32,10 +32,16 @@ export default function OAuthButtons() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [scriptFailed, setScriptFailed] = useState(false);
+  const googleEnabled = appConfig.oauthProviders.includes("google");
+  const configuredProviders = appConfig.oauthProviders.length
+    ? appConfig.oauthProviders.join(", ")
+    : "none";
 
   useEffect(() => {
     if (
       !scriptLoaded ||
+      scriptFailed ||
       !appConfig.googleClientId ||
       !buttonRef.current ||
       !window.google
@@ -76,13 +82,26 @@ export default function OAuthButtons() {
       text: "signin_with",
       width: "340",
     });
-  }, [scriptLoaded]);
-
-  if (!appConfig.oauthProviders.includes("google")) return null;
+  }, [scriptFailed, scriptLoaded]);
 
   return (
     <div className="space-y-3">
-      {!appConfig.googleClientId ? (
+      {!googleEnabled ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Google sign-in is disabled because
+          {" "}
+          <code className="font-medium">NEXT_PUBLIC_OAUTH_PROVIDERS</code>
+          {" "}
+          does not include
+          {" "}
+          <code className="font-medium">google</code>
+          .
+          {" "}
+          Current value:
+          {" "}
+          <code className="font-medium">{configuredProviders}</code>
+        </div>
+      ) : !appConfig.googleClientId ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Google sign-in is disabled until
           {" "}
@@ -90,12 +109,25 @@ export default function OAuthButtons() {
           {" "}
           is configured.
         </div>
+      ) : scriptFailed ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Google sign-in could not load Google&apos;s script. This is usually a
+          network, firewall, ad-blocker, or browser privacy issue rather than a
+          React rendering problem.
+        </div>
       ) : (
         <>
           <Script
             src="https://accounts.google.com/gsi/client"
             strategy="afterInteractive"
-            onLoad={() => setScriptLoaded(true)}
+            onLoad={() => {
+              setScriptFailed(false);
+              setScriptLoaded(true);
+            }}
+            onError={() => {
+              setScriptLoaded(false);
+              setScriptFailed(true);
+            }}
           />
           <div
             className={`rounded-[26px] border border-white/70 bg-white/85 p-3 shadow-[0_10px_24px_rgba(122,132,173,0.12)] ${

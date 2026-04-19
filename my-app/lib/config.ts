@@ -12,10 +12,9 @@ const readOptionalString = (value: string | undefined) => {
 
 const readList = (value: string | undefined, fallback: string[]) => {
   const trimmed = value?.trim();
-  if (!trimmed) return fallback;
-  return trimmed
-    .split(",")
-    .map((item) => item.trim())
+  const source = trimmed ? trimmed.split(",") : fallback;
+  return source
+    .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
 };
 

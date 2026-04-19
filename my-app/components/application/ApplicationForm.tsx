@@ -54,6 +54,27 @@ type UploadFieldName =
   | "residenceProofFather"
   | "additionalDocuments";
 
+const localUploadRequirements: Record<
+  Exclude<UploadFieldName, "additionalDocuments">,
+  keyof Pick<
+    {
+      hasApartmentInAstana: BinaryChoice;
+      parentsWorkInAstana: BinaryChoice;
+      isAstanaResident: BinaryChoice;
+    },
+    "hasApartmentInAstana" | "parentsWorkInAstana" | "isAstanaResident"
+  >
+> = {
+  propertyCertificateSelf: "hasApartmentInAstana",
+  propertyCertificateMother: "hasApartmentInAstana",
+  propertyCertificateFather: "hasApartmentInAstana",
+  workCertificateMother: "parentsWorkInAstana",
+  workCertificateFather: "parentsWorkInAstana",
+  residenceProofSelf: "isAstanaResident",
+  residenceProofMother: "isAstanaResident",
+  residenceProofFather: "isAstanaResident",
+};
+
 interface FileUploadProps {
   name: UploadFieldName;
   label: string;
@@ -344,6 +365,10 @@ export default function ApplicationForm() {
     setFileUploads((current) => ({ ...current, [name]: files }));
   };
 
+  const isLocalUploadRequired = (
+    fieldName: Exclude<UploadFieldName, "additionalDocuments">,
+  ) => formData[localUploadRequirements[fieldName]] !== "";
+
   // const criteria = [
   //   "Students with registered Summer courses (Registrar verified)",
   //   "Confirmed internships (CAC verified)",
@@ -362,6 +387,26 @@ export default function ApplicationForm() {
 
     if (formData.applicantType === "local" && formData.iin.length !== 12) {
       setError("IIN must be exactly 12 digits.");
+      return;
+    }
+
+    if (formData.applicantType === "local") {
+      const missingRequiredUploads = Object.entries(localUploadRequirements)
+        .filter(([fieldName]) =>
+          isLocalUploadRequired(
+            fieldName as Exclude<UploadFieldName, "additionalDocuments">,
+          ),
+        )
+        .some(([fieldName]) => fileUploads[fieldName as UploadFieldName].length === 0);
+
+      if (missingRequiredUploads) {
+        setError("Upload is required for every local document section answered 'No'.");
+        return;
+      }
+    }
+
+    if (!confirmed) {
+      setError("Please confirm before submitting.");
       return;
     }
 
@@ -666,12 +711,6 @@ export default function ApplicationForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        )}
-
         <SectionCard
           title="Student information"
           description="Add your identity and academic details."
@@ -892,29 +931,29 @@ export default function ApplicationForm() {
 
                 <FileUploadField
                   name="propertyCertificateSelf"
-                  required
+                  required={isLocalUploadRequired("propertyCertificateSelf")}
                   files={fileUploads.propertyCertificateSelf}
                   onChange={handleFileChange}
                   label="Certificate of no real estate in Astana (yourself)"
-                  helperText="Issued for Astana only. From eGov. PDF only."
+                  helperText="Issued for Astana only."
                 />
 
                 <FileUploadField
                   name="propertyCertificateMother"
-                  required
+                  required={isLocalUploadRequired("propertyCertificateMother")}
                   files={fileUploads.propertyCertificateMother}
                   onChange={handleFileChange}
                   label="Certificate of no real estate in Astana (mother)"
-                  helperText="Upload eGov certificate or an empty file where applicable."
+                  helperText="Required if you answered No."
                 />
 
                 <FileUploadField
                   name="propertyCertificateFather"
-                  required
+                  required={isLocalUploadRequired("propertyCertificateFather")}
                   files={fileUploads.propertyCertificateFather}
                   onChange={handleFileChange}
                   label="Certificate of no real estate in Astana (father)"
-                  helperText="Upload eGov certificate or an empty file where applicable."
+                  helperText="Required if you answered No."
                 />
 
                 <RadioGroup
@@ -928,20 +967,20 @@ export default function ApplicationForm() {
 
                 <FileUploadField
                   name="workCertificateMother"
-                  required
+                  required={isLocalUploadRequired("workCertificateMother")}
                   files={fileUploads.workCertificateMother}
                   onChange={handleFileChange}
                   label="Work certificate (mother)"
-                  helperText="Issued not more than 10 days before the application."
+                  helperText="Issued not more than 10 days before the application. Required if you answered No."
                 />
 
                 <FileUploadField
                   name="workCertificateFather"
-                  required
+                  required={isLocalUploadRequired("workCertificateFather")}
                   files={fileUploads.workCertificateFather}
                   onChange={handleFileChange}
                   label="Work certificate (father)"
-                  helperText="Issued not more than 10 days before the application."
+                  helperText="Issued not more than 10 days before the application. Required if you answered No."
                 />
 
                 <RadioGroup
@@ -955,29 +994,29 @@ export default function ApplicationForm() {
 
                 <FileUploadField
                   name="residenceProofSelf"
-                  required
+                  required={isLocalUploadRequired("residenceProofSelf")}
                   files={fileUploads.residenceProofSelf}
                   onChange={handleFileChange}
                   label="Registration report in Astana (yourself)"
-                  helperText="No screenshots. Use the official eGov report."
+                  helperText="No screenshots. Use the official eGov report. Required if you answered No."
                 />
 
                 <FileUploadField
                   name="residenceProofMother"
-                  required
+                  required={isLocalUploadRequired("residenceProofMother")}
                   files={fileUploads.residenceProofMother}
                   onChange={handleFileChange}
                   label="Registration report in Astana (mother)"
-                  helperText="Upload the official report or empty file where applicable."
+                  helperText="Required if you answered No."
                 />
 
                 <FileUploadField
                   name="residenceProofFather"
-                  required
+                  required={isLocalUploadRequired("residenceProofFather")}
                   files={fileUploads.residenceProofFather}
                   onChange={handleFileChange}
                   label="Registration report in Astana (father)"
-                  helperText="Upload the official report or empty file where applicable."
+                  helperText="Required if you answered No."
                 />
 
                 <FileUploadField
@@ -1029,12 +1068,21 @@ export default function ApplicationForm() {
           </div>
         </SectionCard>
 
+        {error && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
         <div className="flex flex-col gap-4 rounded-[28px] border border-[#eceff6] bg-white p-5 shadow-[0_14px_34px_rgba(122,132,173,0.08)] md:flex-row md:items-center md:justify-between">
           <label className="flex items-center gap-3 max-w-2xl cursor-pointer">
             <input
               type="checkbox"
               checked={confirmed}
-              onChange={(e) => setConfirmed(e.target.checked)}
+              onChange={(e) => {
+                setConfirmed(e.target.checked);
+                if (e.target.checked) setError("");
+              }}
               className="mt-1 h-4 w-4 shrink-0 accent-[#7d879b]"
             />
             <span className="text-sm leading-6 text-[#7d879b]">
