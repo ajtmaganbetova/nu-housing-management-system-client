@@ -1,19 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import {
+  ChangeEvent,
+  FormEvent,
+  ReactNode,
+  useEffect,
+  useState,
+} from "react";
 import { apiJson } from "@/lib/auth";
 import {
   ApplicationDocument,
   listApplicationDocuments,
   resolveDocumentDownloadUrl,
+  uploadDocument,
 } from "@/lib/documents";
 
 interface Application {
   id: number;
   student_id: number;
+  fio?: string;
   year: number;
   major: string;
   gender: string;
+  room_preference?: string;
+  roomPreference?: string;
   additional_info: string;
   status: string;
   submitted_at: string;
@@ -26,6 +36,29 @@ interface Application {
   reviewReason?: string;
   reasoning?: string;
 }
+
+interface ApplicationPatchPayload {
+  fio: string;
+  year: number;
+  major: string;
+  gender: string;
+  room_preference: string;
+  additional_info: string;
+}
+
+interface EditableApplicationFields {
+  apartmentInAstana: string;
+  parentsWorkInAstana: string;
+  astanaResident: string;
+  preferredRoommate: string;
+}
+
+const editableInfoKeys = {
+  apartmentInAstana: ["Apartment in Astana"],
+  parentsWorkInAstana: ["Parents work in Astana"],
+  astanaResident: ["Astana resident"],
+  preferredRoommate: ["Preferred Roommate"],
+} as const;
 
 function readFirstString(values: unknown[]) {
   for (const value of values) {
@@ -104,6 +137,144 @@ function parseAdditionalInfo(info: string): Record<string, string> {
   return result;
 }
 
+function getApplicationFio(
+  application: Application,
+  info: Record<string, string>,
+) {
+  return readFirstString([
+    application.fio,
+    info["ФИО"],
+    info["Name Surname"],
+    info["Full Name"],
+    info["FIO"],
+  ]);
+}
+
+function getRoomPreference(
+  application: Application,
+  info: Record<string, string>,
+) {
+  return readFirstString([
+    application.room_preference,
+    application.roomPreference,
+    info["Room Preference"],
+    info["Room preference"],
+    info["Room Type"],
+  ]);
+}
+
+function getApplicationYear(
+  application: Application,
+  info: Record<string, string>,
+) {
+  return readFirstString([
+    info["Year of Study"],
+    info["Year"],
+    Number.isFinite(application.year) ? String(application.year) : "",
+  ]);
+}
+
+function getApplicationMajor(
+  application: Application,
+  info: Record<string, string>,
+) {
+  return readFirstString([info["Major"], application.major, info["School"]]);
+}
+
+function normalizeBinaryChoice(value?: string) {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "yes" || normalized === "no") return normalized;
+  return value ?? "";
+}
+
+function updateAdditionalInfo(
+  currentInfo: string,
+  fields: EditableApplicationFields,
+) {
+  const lines = currentInfo ? currentInfo.split("\n") : [];
+  const updates: Record<string, string> = {
+    apartmentInAstana: fields.apartmentInAstana,
+    parentsWorkInAstana: fields.parentsWorkInAstana,
+    astanaResident: fields.astanaResident,
+    preferredRoommate: fields.preferredRoommate.trim(),
+  };
+  const seen = new Set<keyof typeof editableInfoKeys>();
+
+  const updatedLines = lines.map((line) => {
+    const colonIndex = line.indexOf(":");
+    if (colonIndex === -1) return line;
+
+    const key = line.substring(0, colonIndex).trim();
+    const field = (
+      Object.keys(editableInfoKeys) as Array<keyof typeof editableInfoKeys>
+    ).find((candidate) =>
+      (editableInfoKeys[candidate] as readonly string[]).includes(key),
+    );
+
+    if (!field) return line;
+    seen.add(field);
+    return `${key}: ${updates[field]}`;
+  });
+
+  (Object.keys(editableInfoKeys) as Array<keyof typeof editableInfoKeys>)
+    .filter((field) => !seen.has(field) && updates[field])
+    .forEach((field) => {
+      const key = editableInfoKeys[field][0];
+      updatedLines.push(`${key}: ${updates[field]}`);
+    });
+
+  return updatedLines.filter(Boolean).join("\n");
+}
+
+function createEditFields(application: Application): EditableApplicationFields {
+  const info = parseAdditionalInfo(application.additional_info);
+
+  return {
+    apartmentInAstana: normalizeBinaryChoice(info["Apartment in Astana"]),
+    parentsWorkInAstana: normalizeBinaryChoice(info["Parents work in Astana"]),
+    astanaResident: normalizeBinaryChoice(info["Astana resident"]),
+    preferredRoommate: info["Preferred Roommate"] ?? "",
+  };
+}
+
+function normalizeUpdatedApplication(
+  payload: unknown,
+  fallback: Application,
+  submitted: ApplicationPatchPayload,
+): Application {
+  const value =
+    payload && typeof payload === "object" && "application" in payload
+      ? (payload as { application?: unknown }).application
+      : payload;
+
+  if (value && typeof value === "object") {
+    return {
+      ...fallback,
+      ...(value as Partial<Application>),
+      fio: (value as Partial<Application>).fio ?? submitted.fio,
+      year: (value as Partial<Application>).year ?? submitted.year,
+      major: (value as Partial<Application>).major ?? submitted.major,
+      gender: (value as Partial<Application>).gender ?? submitted.gender,
+      room_preference:
+        (value as Partial<Application>).room_preference ??
+        (value as Partial<Application>).roomPreference ??
+        submitted.room_preference,
+      additional_info:
+        (value as Partial<Application>).additional_info ??
+        submitted.additional_info,
+      updated_at:
+        (value as Partial<Application>).updated_at ??
+        new Date().toISOString(),
+    };
+  }
+
+  return {
+    ...fallback,
+    ...submitted,
+    updated_at: new Date().toISOString(),
+  };
+}
+
 function getStatusClasses(status: string) {
   switch (status) {
     case "approved":
@@ -125,16 +296,77 @@ function formatDate(dateString: string) {
   });
 }
 
-function InfoRow({ label, value }: { label: string; value?: string }) {
-  if (!value) return null;
+function InfoRow({
+  label,
+  value,
+  children,
+  forceVisible = false,
+}: {
+  label: string;
+  value?: string;
+  children?: ReactNode;
+  forceVisible?: boolean;
+}) {
+  if (!forceVisible && !children && !value) return null;
 
   return (
     <div className="grid gap-1 rounded-2xl border border-[#edf1f8] bg-white/75 px-4 py-3 md:grid-cols-[180px_1fr]">
       <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#9aa3b8]">
         {label}
       </span>
-      <span className="text-sm text-[#17172f]">{value}</span>
+      {children ?? <span className="text-sm text-[#17172f]">{value}</span>}
     </div>
+  );
+}
+
+const inlineInputClass =
+  "block min-h-0 w-full rounded-xl border border-[#dfe4f2] bg-white px-3 py-2 text-sm text-[#17172f] outline-none transition focus:border-[#bfc8e6] focus:ring-4 focus:ring-[#dfe6fb]";
+
+function InlineTextField({
+  name,
+  value,
+  onChange,
+}: {
+  name: keyof EditableApplicationFields;
+  value: string;
+  onChange: (
+    event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => void;
+}) {
+  return (
+    <input
+      type="text"
+      name={name}
+      value={value}
+      onChange={onChange}
+      className={inlineInputClass}
+    />
+  );
+}
+
+function InlineChoiceField({
+  name,
+  value,
+  onChange,
+}: {
+  name: keyof EditableApplicationFields;
+  value: string;
+  onChange: (
+    event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => void;
+}) {
+  return (
+    <select
+      name={name}
+      value={value}
+      onChange={onChange}
+      required
+      className={inlineInputClass}
+    >
+      <option value="">Select option</option>
+      <option value="yes">Yes</option>
+      <option value="no">No</option>
+    </select>
   );
 }
 
@@ -151,17 +383,43 @@ const docTypeLabels: Record<string, string> = {
   additional: "Additional Documents",
 };
 
-function ApplicationCard({ application }: { application: Application }) {
+function ApplicationCard({
+  application,
+  onApplicationUpdated,
+}: {
+  application: Application;
+  onApplicationUpdated: (application: Application) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [documents, setDocuments] = useState<ApplicationDocument[]>([]);
   const [docsLoading, setDocsLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFields, setEditFields] = useState<EditableApplicationFields>(() =>
+    createEditFields(application),
+  );
+  const [isSaving, setIsSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [editSuccess, setEditSuccess] = useState("");
   const [openingDocumentId, setOpeningDocumentId] = useState<
     string | number | null
   >(null);
+  const [replacingDocumentId, setReplacingDocumentId] = useState<
+    string | number | null
+  >(null);
+  const [documentError, setDocumentError] = useState("");
 
   const info = parseAdditionalInfo(application.additional_info);
+  const currentFio = getApplicationFio(application, info);
+  const currentYear = getApplicationYear(application, info);
+  const currentMajor = getApplicationMajor(application, info);
+  const currentRoomPreference = getRoomPreference(application, info);
   const applicationReviewReason = getApplicationReviewReason(application);
   const applicationReviewTone = getReviewTone(application.status);
+  const editFormId = `application-edit-${application.id}`;
+
+  useEffect(() => {
+    setEditFields(createEditFields(application));
+  }, [application]);
 
   const fetchDocuments = async () => {
     if (documents.length > 0) return;
@@ -197,8 +455,108 @@ function ApplicationCard({ application }: { application: Application }) {
     }
   };
 
+  const getDocumentKey = (document: ApplicationDocument) =>
+    document.id ?? document.name ?? document.type;
+
+  const handleReplaceDocument = async (
+    document: ApplicationDocument,
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (file.type && file.type !== "application/pdf") {
+      setDocumentError("Please upload a PDF file.");
+      return;
+    }
+
+    const documentKey = getDocumentKey(document);
+    setReplacingDocumentId(documentKey);
+    setDocumentError("");
+
+    try {
+      await uploadDocument({
+        applicationId: application.id,
+        type: document.type,
+        file,
+      });
+      const refreshedDocuments = await listApplicationDocuments(application.id);
+      setDocuments(refreshedDocuments);
+    } catch (error) {
+      setDocumentError(
+        error instanceof Error ? error.message : "Failed to replace document.",
+      );
+    } finally {
+      setReplacingDocumentId(null);
+    }
+  };
+
   const handlePaymentClick = () => {
     window.location.href = `/dashboard/student/payment?applicationId=${application.id}`;
+  };
+
+  const handleEditFieldChange = (
+    event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const { name, value } = event.target;
+    setEditFields((current) => ({ ...current, [name]: value }));
+  };
+
+  const handleStartEdit = () => {
+    setEditFields(createEditFields(application));
+    setEditError("");
+    setEditSuccess("");
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditFields(createEditFields(application));
+    setEditError("");
+    setIsEditing(false);
+  };
+
+  const handleSaveEdit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const stableYear = Number(currentYear ?? application.year);
+
+    const payload: ApplicationPatchPayload = {
+      fio: currentFio ?? "",
+      year: Number.isInteger(stableYear) ? stableYear : application.year,
+      major: currentMajor ?? application.major,
+      gender: info["Gender"] || application.gender,
+      room_preference: currentRoomPreference ?? "",
+      additional_info: updateAdditionalInfo(
+        application.additional_info,
+        editFields,
+      ),
+    };
+
+    setIsSaving(true);
+    setEditError("");
+    setEditSuccess("");
+
+    try {
+      const response = await apiJson<unknown>(`/applications/${application.id}`, {
+        method: "PATCH",
+        jsonBody: payload,
+      });
+      const updatedApplication = normalizeUpdatedApplication(
+        response,
+        application,
+        payload,
+      );
+      onApplicationUpdated(updatedApplication);
+      setEditSuccess("Submission updated.");
+      setIsEditing(false);
+    } catch (error) {
+      setEditError(
+        error instanceof Error ? error.message : "Failed to update submission.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -214,7 +572,7 @@ function ApplicationCard({ application }: { application: Application }) {
             Application #{application.id}
           </p>
           <h4 className="mt-2 text-lg font-semibold tracking-tight text-[#17172f]">
-            {info["Name Surname"] || "Application"}
+            {currentFio || "Application"}
           </h4>
           <p className="mt-1 text-sm text-[#7d879b]">
             {info["School"] || application.major} · Submitted{" "}
@@ -256,7 +614,51 @@ function ApplicationCard({ application }: { application: Application }) {
                     </div>
                   )}
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="mb-5 flex flex-col gap-3 rounded-[24px] border border-[#edf1f8] bg-white/80 px-4 py-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h5 className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9aa3b8]">
+                Application details
+              </h5>
+              {editError && (
+                <p className="mt-1 text-sm text-red-700">{editError}</p>
+              )}
+              {editSuccess && (
+                <p className="mt-1 text-sm text-green-700">{editSuccess}</p>
+              )}
+            </div>
+
+            {isEditing ? (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  disabled={isSaving}
+                  className="inline-flex items-center justify-center rounded-xl border border-[#dfe4f2] bg-white px-4 py-2 text-sm font-semibold text-[#17172f] transition hover:bg-[#f8faff] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  form={editFormId}
+                  disabled={isSaving}
+                  className="inline-flex items-center justify-center rounded-xl bg-[#17172f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2a2a4a] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSaving ? "Saving..." : "Save"}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleStartEdit}
+                className="inline-flex items-center justify-center rounded-xl bg-[#17172f] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2a2a4a]"
+              >
+                Edit Submission
+              </button>
+            )}
+          </div>
+
+          <form id={editFormId} onSubmit={handleSaveEdit}>
+            <div className="grid gap-6 lg:grid-cols-2">
 
             <div className="space-y-3">
 
@@ -266,7 +668,7 @@ function ApplicationCard({ application }: { application: Application }) {
               <InfoRow label="Applicant type" value={info["Applicant Type"]} />
               <InfoRow label="Student ID" value={info["Student ID"]} />
               <InfoRow label="Name surname" value={info["Name Surname"]} />
-              <InfoRow label="ФИО" value={info["ФИО"]} />
+              <InfoRow label="ФИО" value={currentFio ?? undefined} />
               <InfoRow
                 label="Gender"
                 value={info["Gender"] || application.gender}
@@ -288,26 +690,67 @@ function ApplicationCard({ application }: { application: Application }) {
                 value={info["School"] || application.major}
               />
               <InfoRow label="Level" value={info["Level"]} />
-              <InfoRow label="Major" value={info["Major"]} />
-              <InfoRow label="Year" value={info["Year of Study"]} />
+              <InfoRow label="Major" value={currentMajor ?? undefined} />
+              <InfoRow label="Year" value={currentYear ?? undefined} />
+              <InfoRow
+                label="Room preference"
+                value={currentRoomPreference ?? undefined}
+              />
               <InfoRow
                 label="Apartment in Astana"
                 value={info["Apartment in Astana"]}
-              />
+                forceVisible={isEditing}
+              >
+                {isEditing ? (
+                  <InlineChoiceField
+                    name="apartmentInAstana"
+                    value={editFields.apartmentInAstana}
+                    onChange={handleEditFieldChange}
+                  />
+                ) : undefined}
+              </InfoRow>
               <InfoRow
                 label="Parents work in Astana"
                 value={info["Parents work in Astana"]}
-              />
+                forceVisible={isEditing}
+              >
+                {isEditing ? (
+                  <InlineChoiceField
+                    name="parentsWorkInAstana"
+                    value={editFields.parentsWorkInAstana}
+                    onChange={handleEditFieldChange}
+                  />
+                ) : undefined}
+              </InfoRow>
               <InfoRow
                 label="Astana resident"
                 value={info["Astana resident"]}
-              />
+                forceVisible={isEditing}
+              >
+                {isEditing ? (
+                  <InlineChoiceField
+                    name="astanaResident"
+                    value={editFields.astanaResident}
+                    onChange={handleEditFieldChange}
+                  />
+                ) : undefined}
+              </InfoRow>
               <InfoRow
                 label="Preferred roommate"
                 value={info["Preferred Roommate"]}
-              />
+                forceVisible={isEditing}
+              >
+                {isEditing ? (
+                  <InlineTextField
+                    name="preferredRoommate"
+                    value={editFields.preferredRoommate}
+                    onChange={handleEditFieldChange}
+                  />
+                ) : undefined}
+              </InfoRow>
             </div>
-          </div>
+            </div>
+          </form>
 
           {applicationReviewReason && applicationReviewTone && (
             <div
@@ -337,6 +780,9 @@ function ApplicationCard({ application }: { application: Application }) {
             <h5 className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9aa3b8]">
               Submitted documents
             </h5>
+            {documentError && (
+              <p className="mt-3 text-sm text-red-700">{documentError}</p>
+            )}
             {docsLoading ? (
               <p className="mt-3 text-sm text-[#7d879b]">
                 Loading documents...
@@ -349,7 +795,7 @@ function ApplicationCard({ application }: { application: Application }) {
               <div className="mt-4 space-y-3">
                 {documents.map((doc) => (
                   <div
-                    key={doc.id}
+                    key={getDocumentKey(doc)}
                     className="rounded-2xl border border-[#edf1f8] bg-[#f8faff] px-4 py-3"
                   >
                     <div className="flex items-center justify-between gap-4">
@@ -361,15 +807,31 @@ function ApplicationCard({ application }: { application: Application }) {
                           {doc.name || "PDF document"}
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDocument(doc)}
-                        className="rounded-full bg-[#17172f] px-4 py-2 text-xs font-medium text-white transition hover:-translate-y-0.5"
-                      >
-                        {openingDocumentId === (doc.id ?? doc.name ?? doc.type)
-                          ? "Opening..."
-                          : "Open"}
-                      </button>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-[#dfe4f2] bg-white px-4 py-2 text-xs font-medium text-[#17172f] transition hover:bg-[#f8faff]">
+                          {replacingDocumentId === getDocumentKey(doc)
+                            ? "Replacing..."
+                            : "Replace"}
+                          <input
+                            type="file"
+                            accept="application/pdf,.pdf"
+                            disabled={replacingDocumentId === getDocumentKey(doc)}
+                            onChange={(event) =>
+                              handleReplaceDocument(doc, event)
+                            }
+                            className="sr-only"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDocument(doc)}
+                          className="rounded-full bg-[#17172f] px-4 py-2 text-xs font-medium text-white transition hover:-translate-y-0.5"
+                        >
+                          {openingDocumentId === getDocumentKey(doc)
+                            ? "Opening..."
+                            : "Open"}
+                        </button>
+                      </div>
                     </div>
                     {(() => {
                       const reason = getDocumentReviewReason(doc);
@@ -424,6 +886,16 @@ export default function ApplicationsTable() {
     void fetchApplications();
   }, []);
 
+  const handleApplicationUpdated = (updatedApplication: Application) => {
+    setApplications((current) =>
+      current.map((application) =>
+        application.id === updatedApplication.id
+          ? updatedApplication
+          : application,
+      ),
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -467,7 +939,11 @@ export default function ApplicationsTable() {
         </div>
       ) : (
         applications.map((application) => (
-          <ApplicationCard key={application.id} application={application} />
+          <ApplicationCard
+            key={application.id}
+            application={application}
+            onApplicationUpdated={handleApplicationUpdated}
+          />
         ))
       )}
     </div>
