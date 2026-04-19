@@ -60,6 +60,7 @@ export interface OverviewTabProps {
   onApply: () => void;
   onTrack: () => void;
   user: User | null;
+  hasSubmittedApplication?: boolean;
 }
 
 export function InfoCard({
@@ -103,7 +104,12 @@ export function InfoCard({
   );
 }
 
-export function OverviewTab({ onApply, onTrack, user }: OverviewTabProps) {
+export function OverviewTab({
+  onApply,
+  onTrack,
+  user,
+  hasSubmittedApplication = false,
+}: OverviewTabProps) {
   const { first } = formatNameFromEmail(user?.email);
   const [approvedApplication, setApprovedApplication] =
     useState<StudentApplicationSummary | null>(null);
@@ -213,10 +219,12 @@ export function OverviewTab({ onApply, onTrack, user }: OverviewTabProps) {
 
           <div className="flex flex-wrap gap-4">
             <button
-              onClick={onApply}
+              onClick={hasSubmittedApplication ? onTrack : onApply}
               className="group flex items-center gap-2 rounded-2xl bg-[#6f63ff] px-8 py-4 text-sm font-bold transition-all hover:bg-[#6053f7] hover:shadow-[0_0_20px_rgba(111,99,255,0.4)]"
             >
-              Start New Application
+              {hasSubmittedApplication
+                ? "View My Application"
+                : "Start New Application"}
               <ArrowRight
                 size={18}
                 className="transition-transform group-hover:translate-x-1"

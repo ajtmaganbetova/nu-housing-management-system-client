@@ -10,6 +10,7 @@ import { SupportTab } from "@/components/dashboard/SupportTab";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { ScrollProgress } from "@/components/ui/ScrollProgress";
 import { getSystemSettings } from "@/lib/system-settings";
+import { apiJson } from "@/lib/auth";
 
 export interface User {
   id: number;
@@ -22,10 +23,15 @@ export interface User {
 }
 export type StudentSection = "overview" | "apply" | "applications" | "support";
 
+interface StudentApplicationSummary {
+  id: number;
+}
+
 export default function StudentDashboard() {
   const { isLoading, isAuthenticated } = useAuthGuard("student");
   const [isAppOpen, setIsAppOpen] = useState(true);
   const [isSettingsLoading, setIsSettingsLoading] = useState(true);
+  const [hasSubmittedApplication, setHasSubmittedApplication] = useState(false);
 
   const [activeSection, setActiveSection] = useState<StudentSection>(() => {
     if (typeof window !== "undefined") {
@@ -36,7 +42,7 @@ export default function StudentDashboard() {
   });
 
   const [refreshKey, setRefreshKey] = useState(0);
-  const [user, setUser] = useState<User | null>(() => {
+  const [user] = useState<User | null>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("user");
       try {
@@ -64,14 +70,36 @@ export default function StudentDashboard() {
     }
   }, []);
 
+  const fetchStudentApplications = useCallback(async () => {
+    try {
+      const applications =
+        (await apiJson<StudentApplicationSummary[]>("/applications/my", {
+          method: "GET",
+        })) || [];
+
+      setHasSubmittedApplication(applications.length > 0);
+    } catch (error) {
+      console.error("Failed to load student applications:", error);
+      setHasSubmittedApplication(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (isLoading || !isAuthenticated) return;
     fetchApplicationSettings();
-  }, [fetchApplicationSettings, isAuthenticated, isLoading]);
+    void fetchStudentApplications();
+  }, [fetchApplicationSettings, fetchStudentApplications, isAuthenticated, isLoading]);
 
   const handleSectionChange = (section: StudentSection) => {
     setActiveSection(section);
     localStorage.setItem("studentPortalSection", section);
+  };
+
+  const handleApplicationSubmitted = () => {
+    setHasSubmittedApplication(true);
+    setRefreshKey((current) => current + 1);
+    setActiveSection("applications");
+    localStorage.setItem("studentPortalSection", "applications");
   };
 
   const handleLogout = () => {
@@ -80,7 +108,8 @@ export default function StudentDashboard() {
   };
 
   const isStudent = user?.role === "student";
-  const shouldBlockApplication = isStudent && !isAppOpen;
+  const shouldBlockApplication =
+    isStudent && (!isAppOpen || hasSubmittedApplication);
 
   if (isLoading || !isAuthenticated || isSettingsLoading) {
     return (
@@ -129,6 +158,7 @@ export default function StudentDashboard() {
                   onApply={() => handleSectionChange("apply")}
                   onTrack={() => handleSectionChange("applications")}
                   user={user}
+                  hasSubmittedApplication={hasSubmittedApplication}
                 />
               )}
 
@@ -141,26 +171,37 @@ export default function StudentDashboard() {
                       </div>
 
                       <h2 className="text-xl font-bold text-[#17172f]">
-                        Applications are Currently Closed
+                        {hasSubmittedApplication
+                          ? "Application already submitted"
+                          : "Applications are Currently Closed"}
                       </h2>
 
                       <p className="mt-2 text-center text-[#7d879b]">
-                        The administration is not accepting new housing
-                        applications at this time.
+                        {hasSubmittedApplication
+                          ? "You have already submitted a housing application. You can track its status in the My Applications section."
+                          : "The administration is not accepting new housing applications at this time."}
                       </p>
 
                       <button
-                        onClick={() => setActiveSection("overview")}
+                        onClick={() =>
+                          setActiveSection(
+                            hasSubmittedApplication ? "applications" : "overview",
+                          )
+                        }
                         className="mt-6 rounded-xl bg-[#6f63ff] px-6 py-2 font-medium text-white"
                       >
-                        Go Back to Overview
+                        {hasSubmittedApplication
+                          ? "Go to My Applications"
+                          : "Go Back to Overview"}
                       </button>
                     </div>
                   ) : (
                     <>
                       <ScrollProgress targetId="application-container" />
                       <div className="mt-6">
-                        <ApplicationForm />
+                        <ApplicationForm
+                          onSubmitted={handleApplicationSubmitted}
+                        />
                       </div>
                     </>
                   )}

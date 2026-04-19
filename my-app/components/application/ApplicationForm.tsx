@@ -253,7 +253,13 @@ function FileUploadField({
   );
 }
 
-export default function ApplicationForm() {
+interface ApplicationFormProps {
+  onSubmitted?: () => void;
+}
+
+export default function ApplicationForm({
+  onSubmitted,
+}: ApplicationFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [applicationStatus, setApplicationStatus] =
     useState<ApplicationStatus>("idle");
@@ -420,6 +426,17 @@ export default function ApplicationForm() {
         return;
       }
 
+      const existingApplications =
+        (await apiJson<Array<{ id: number }>>("/applications/my", {
+          method: "GET",
+        })) || [];
+
+      if (existingApplications.length > 0) {
+        throw new Error(
+          "You have already submitted a housing application.",
+        );
+      }
+
       const additionalInfo = [
         `Applicant Type: ${formData.applicantType}`,
         `Student ID: ${formData.studentId}`,
@@ -514,6 +531,7 @@ export default function ApplicationForm() {
 
         await Promise.all(uploadTasks);
         setApplicationStatus("submitted");
+        onSubmitted?.();
       } else {
         throw new Error(data?.error || "Unknown error");
       }
