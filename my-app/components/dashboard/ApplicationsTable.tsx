@@ -161,6 +161,20 @@ function getApplicationFio(
   ]);
 }
 
+function getApplicationDisplayName(
+  application: Application,
+  info: Record<string, string>,
+) {
+  return readFirstString([
+    info["Name Surname"],
+    info["Full Name"],
+    [info["First Name"], info["Last Name"]].filter(Boolean).join(" "),
+    application.fio,
+    info["ФИО"],
+    info["FIO"],
+  ]);
+}
+
 function getRoomPreference(
   application: Application,
   info: Record<string, string>,
@@ -421,6 +435,7 @@ function ApplicationCard({
 
   const info = parseAdditionalInfo(application.additional_info);
   const currentFio = getApplicationFio(application, info);
+  const displayName = getApplicationDisplayName(application, info);
   const currentYear = getApplicationYear(application, info);
   const currentMajor = getApplicationMajor(application, info);
   const currentRoomPreference = getRoomPreference(application, info);
@@ -586,7 +601,7 @@ function ApplicationCard({
             Application #{application.id}
           </p>
           <h4 className="mt-2 text-lg font-semibold tracking-tight text-[#17172f]">
-            {currentFio || "Application"}
+            {displayName || "Application"}
           </h4>
           <p className="mt-1 text-sm text-[#7d879b]">
             {info["School"] || application.major} · Submitted{" "}
@@ -686,7 +701,10 @@ function ApplicationCard({
               </h5>
               <InfoRow label="Applicant type" value={info["Applicant Type"]} />
               <InfoRow label="Student ID" value={info["Student ID"]} />
-              <InfoRow label="Name surname" value={info["Name Surname"]} />
+              <InfoRow
+                label="Name surname"
+                value={displayName ?? undefined}
+              />
               <InfoRow label="ФИО" value={currentFio ?? undefined} />
               <InfoRow
                 label="Gender"
