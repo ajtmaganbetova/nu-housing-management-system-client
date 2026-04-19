@@ -17,182 +17,62 @@ interface Application {
   rejected_reason?: string;
 }
 
-interface Resident {
-  applicationId: number;
-  studentId: string;
-  name: string;
-}
-
-interface ApprovedApplicant extends Resident {
-  preferredRoommateId: string;
-}
-
-interface RoomAllocation {
-  roomLabel: string;
-  residents: [Resident, Resident];
+interface BackendDormInventoryRow {
+  application_id?: number | null;
+  block?: number | string | null;
+  room_number?: number | string | null;
 }
 
 const TOTAL_ROOMS = 2772;
+const DORM_BLOCKS = ["19", "20", "21", "22", "23", "24", "25", "26", "27"] as const;
 
 function formatPercentage(value: number) {
   return `${value.toFixed(1)}%`;
 }
 
-function parseAdditionalInfo(info: string): Record<string, string> {
-  const result: Record<string, string> = {};
-  if (!info) return result;
-
-  info.split("\n").forEach((line) => {
-    const colonIndex = line.indexOf(":");
-    if (colonIndex === -1) return;
-
-    const key = line.slice(0, colonIndex).trim();
-    const value = line.slice(colonIndex + 1).trim();
-
-    if (key) result[key] = value;
-  });
-
-  return result;
-}
-
-function normalizeIdentifier(value: string | number | undefined | null) {
-  if (value === undefined || value === null) return "";
-  return String(value).trim().replace(/\s+/g, "").toLowerCase();
-}
-
-function extractStudentId(
-  application: Application,
-  info: Record<string, string>
-) {
-  return (
-    info["Student ID"] ||
-    info["StudentID"] ||
-    info["NU ID"] ||
-    info["NU_ID"] ||
-    String(application.student_id)
-  );
-}
-
-function extractPreferredRoommateId(info: Record<string, string>) {
-  return (
-    info["Preferred Roommate"] ||
-    info["Preferred roommate"] ||
-    info["Preferred Roommate ID"] ||
-    info["Roommate ID"] ||
-    ""
-  );
-}
-
-function extractResidentName(
-  application: Application,
-  info: Record<string, string>
-) {
-  const name =
-    info["Name Surname"] ||
-    info["Name"] ||
-    [info["First Name"], info["Last Name"]].filter(Boolean).join(" ").trim();
-
-  return name || `Student ${extractStudentId(application, info)}`;
-}
-
-function buildApprovedRoomAllocations(applications: Application[]) {
-  const approved = applications
-    .filter((application) => application.status === "approved")
-    .map((application) => {
-      const info = parseAdditionalInfo(application.additional_info);
-      const studentId = extractStudentId(application, info);
-      const preferredRoommateId = extractPreferredRoommateId(info);
-
-      return {
-        application,
-        studentId,
-        preferredRoommateId,
-        normalizedStudentId: normalizeIdentifier(studentId),
-        normalizedPreferredRoommateId: normalizeIdentifier(preferredRoommateId),
-        name: extractResidentName(application, info),
-      };
-    })
-    .filter((application) => application.normalizedStudentId);
-
-  const byStudentId = new Map(
-    approved.map((application) => [application.normalizedStudentId, application])
-  );
-
-  const pairedApplicationIds = new Set<number>();
-  const residentPairs: [Resident, Resident][] = [];
-
-  approved.forEach((application) => {
-    if (pairedApplicationIds.has(application.application.id)) return;
-    if (!application.normalizedPreferredRoommateId) return;
-
-    const roommate = byStudentId.get(application.normalizedPreferredRoommateId);
-    if (!roommate) return;
-    if (roommate.application.id === application.application.id) return;
-    if (pairedApplicationIds.has(roommate.application.id)) return;
-
-    if (
-      roommate.normalizedPreferredRoommateId !== application.normalizedStudentId
-    ) {
-      return;
+function readFirstString(values: Array<string | number | undefined | null>) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
     }
+  }
+  return null;
+}
 
-    pairedApplicationIds.add(application.application.id);
-    pairedApplicationIds.add(roommate.application.id);
+function getInventoryRoomLabel(room: BackendDormInventoryRow) {
+  const block = readFirstString([room.block]);
+  const roomNumber = readFirstString([room.room_number]);
 
-    residentPairs.push([
-      {
-        applicationId: application.application.id,
-        studentId: application.studentId,
-        name: application.name,
-      },
-      {
-        applicationId: roommate.application.id,
-        studentId: roommate.studentId,
-        name: roommate.name,
-      },
-    ]);
-  });
+  if (!block || !roomNumber) return null;
+  if (!DORM_BLOCKS.includes(block as (typeof DORM_BLOCKS)[number])) return null;
 
-  const rooms: RoomAllocation[] = residentPairs
-    .sort((left, right) => left[0].name.localeCompare(right[0].name))
-    .slice(0, TOTAL_ROOMS)
-    .map((residents, index) => ({
-      roomLabel: `Room ${index + 1}`,
-      residents,
-    }));
-
-  const unassignedApprovedApplicants: ApprovedApplicant[] = approved
-    .filter((application) => !pairedApplicationIds.has(application.application.id))
-    .sort((left, right) => left.name.localeCompare(right.name))
-    .map((application) => ({
-      applicationId: application.application.id,
-      studentId: application.studentId,
-      name: application.name,
-      preferredRoommateId: application.preferredRoommateId,
-    }));
-
-  return {
-    rooms,
-    unassignedApprovedApplicants,
-  };
+  return `${block}.${roomNumber}`;
 }
 
 export default function OccupancyStatsSection() {
   const [applications, setApplications] = useState<Application[]>([]);
+  const [inventoryRows, setInventoryRows] = useState<BackendDormInventoryRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
 
-  const fetchApplications = async (showRefreshState = false) => {
+  const fetchStatsData = async (showRefreshState = false) => {
     if (showRefreshState) setIsRefreshing(true);
     else setIsLoading(true);
 
     try {
-      const payload = await apiJson<Application[]>("/housing/applications", {
-        method: "GET",
-      });
+      const [applicationsPayload, inventoryPayload] = await Promise.all([
+        apiJson<Application[]>("/housing/applications", {
+          method: "GET",
+        }),
+        apiJson<BackendDormInventoryRow[]>("/housing/dorm-inventory", {
+          method: "GET",
+        }),
+      ]);
 
-      setApplications(Array.isArray(payload) ? payload : []);
+      setApplications(Array.isArray(applicationsPayload) ? applicationsPayload : []);
+      setInventoryRows(Array.isArray(inventoryPayload) ? inventoryPayload : []);
       setError("");
     } catch (fetchError) {
       console.error("Failed to load occupancy statistics", fetchError);
@@ -204,7 +84,7 @@ export default function OccupancyStatsSection() {
   };
 
   useEffect(() => {
-    void fetchApplications();
+    void fetchStatsData();
   }, []);
 
   const stats = useMemo(() => {
@@ -222,9 +102,26 @@ export default function OccupancyStatsSection() {
 
     const totalApplications = applications.length;
 
-    const allocationResult = buildApprovedRoomAllocations(applications);
-    const occupiedRooms = allocationResult.rooms.length;
-    const waitingApproved = allocationResult.unassignedApprovedApplicants.length;
+    const occupiedRoomLabels = new Set<string>();
+    const assignedApplicationIds = new Set<number>();
+
+    inventoryRows.forEach((row) => {
+      const roomLabel = getInventoryRoomLabel(row);
+      if (!roomLabel) return;
+
+      occupiedRoomLabels.add(roomLabel);
+
+      if (typeof row.application_id === "number" && Number.isFinite(row.application_id)) {
+        assignedApplicationIds.add(row.application_id);
+      }
+    });
+
+    const occupiedRooms = occupiedRoomLabels.size;
+    const waitingApproved = applications.filter(
+      (application) =>
+        application.status === "approved" &&
+        !assignedApplicationIds.has(application.id)
+    ).length;
 
     const occupancyRate =
       TOTAL_ROOMS === 0 ? 0 : (occupiedRooms / TOTAL_ROOMS) * 100;
@@ -245,7 +142,7 @@ export default function OccupancyStatsSection() {
       availableRooms,
       approvalRate,
     };
-  }, [applications]);
+  }, [applications, inventoryRows]);
 
   return (
     <section className="space-y-6">
@@ -265,7 +162,7 @@ export default function OccupancyStatsSection() {
 
         <button
           type="button"
-          onClick={() => void fetchApplications(true)}
+          onClick={() => void fetchStatsData(true)}
           className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-[#17172f] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#2a2a4a] active:scale-95"
         >
           <RefreshCw
@@ -300,7 +197,7 @@ export default function OccupancyStatsSection() {
                 {formatPercentage(stats.occupancyRate)}
               </p>
               <p className="mt-2 text-sm text-[#7d879b]">
-                Based on {stats.occupiedRooms} actually occupied rooms out of{" "}
+                Based on {stats.occupiedRooms} occupied rooms in dorm inventory out of{" "}
                 {TOTAL_ROOMS} total rooms.
               </p>
             </div>
@@ -335,7 +232,7 @@ export default function OccupancyStatsSection() {
                 {stats.approved}
               </p>
               <p className="mt-2 text-sm text-[#7d879b]">
-                Total approved applications, not the same as occupied rooms.
+                Total approved applications, separate from occupied-room count.
               </p>
             </div>
           </div>
@@ -347,7 +244,7 @@ export default function OccupancyStatsSection() {
                   Statistics overview
                 </p>
                 <p className="mt-1 text-sm text-[#667085]">
-                  Real-time summary of room occupancy and application outcomes.
+                  Summary based on housing applications and dorm inventory records.
                 </p>
               </div>
               <span className="rounded-full bg-[#f8faff] px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#667085]">
@@ -402,7 +299,7 @@ export default function OccupancyStatsSection() {
                   {stats.waitingApproved}
                 </p>
                 <p className="mt-2 text-sm text-[#667085]">
-                  Approved students without a mutual roommate match yet.
+                  Approved applications with no recorded room assignment yet.
                 </p>
               </div>
 
@@ -425,15 +322,15 @@ export default function OccupancyStatsSection() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-[#98a2b3]">
-                      Pairing status
+                      Assignment status
                     </p>
                     <p className="mt-1 text-2xl font-bold text-[#17172f]">
-                      {stats.occupiedRooms === 0 ? "Not started" : "Active"}
+                      {stats.occupiedRooms === 0 ? "No assignments" : "Active"}
                     </p>
                   </div>
                 </div>
                 <p className="mt-2 text-sm text-[#667085]">
-                  Rooms become occupied only after mutual roommate matching.
+                  Status is based on whether dorm inventory currently contains room assignments.
                 </p>
               </div>
             </div>
@@ -501,8 +398,7 @@ export default function OccupancyStatsSection() {
 
               {stats.occupiedRooms === 0 && (
                 <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                  No occupied rooms yet. A room is counted as occupied only when
-                  two approved students mutually select each other as roommates.
+                  No occupied rooms are currently recorded in dorm inventory.
                 </div>
               )}
             </div>
