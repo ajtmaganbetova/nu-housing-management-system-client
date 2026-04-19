@@ -2,10 +2,10 @@
 
 import { useState, type ReactNode } from "react";
 import {
-  LayoutDashboard,
-  Users,
-  UserPlus,
+  Database,
   History,
+  LayoutDashboard,
+  LifeBuoy,
   LogOut,
   Search,
   PieChart,
@@ -15,12 +15,11 @@ import {
 export type HousingSection =
   | "dashboard" // Staff: Applications | Admin: System Stats
   | "users" // Admin Only
-  | "create-user" // Admin Only
+  | "diagnostics" // Admin Only
   | "logs" // Admin Only
   | "search" // Staff Only
   | "analytics" // Staff Only
-  | "dorms" // Staff Only
-  | "settings"; // Shared
+  | "dorms"; // Staff Only
 
 export function SidebarHousing({
   activeSection,
@@ -71,47 +70,41 @@ export function SidebarHousing({
       </div>
 
       <nav className="mt-5 space-y-1">
-        {/* SHARED OVERVIEW */}
-        <SidebarItem
-          icon={<LayoutDashboard size={18} />}
-          label={isAdmin ? "System Overview" : "Applications"}
-          active={activeSection === "dashboard"}
-          onClick={() => onSectionChange("dashboard")}
-        />
-
         {isAdmin ? (
           <>
-            <div className="pt-4 pb-2 px-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#98a2b3]">
-                User Management
-              </p>
-            </div>
             <SidebarItem
-              icon={<Users size={18} />}
-              label="Active Users"
+              icon={<LayoutDashboard size={18} />}
+              label="Dashboard"
+              active={activeSection === "dashboard"}
+              onClick={() => onSectionChange("dashboard")}
+            />
+            <SidebarItem
+              icon={<Database size={18} />}
+              label="Users"
               active={activeSection === "users"}
               onClick={() => onSectionChange("users")}
             />
             <SidebarItem
-              icon={<UserPlus size={18} />}
-              label="Provision Account"
-              active={activeSection === "create-user"}
-              onClick={() => onSectionChange("create-user")}
+              icon={<LifeBuoy size={18} />}
+              label="Diagnostics"
+              active={activeSection === "diagnostics"}
+              onClick={() => onSectionChange("diagnostics")}
             />
-            <div className="pt-4 pb-2 px-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#98a2b3]">
-                Security
-              </p>
-            </div>
             <SidebarItem
               icon={<History size={18} />}
-              label="Audit Logs"
+              label="Logs"
               active={activeSection === "logs"}
               onClick={() => onSectionChange("logs")}
             />
           </>
         ) : (
           <>
+            <SidebarItem
+              icon={<Building2 size={18} />}
+              label="Applications"
+              active={activeSection === "dashboard"}
+              onClick={() => onSectionChange("dashboard")}
+            />
             <div className="pt-4 pb-2 px-4">
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#98a2b3]">
                 Operations

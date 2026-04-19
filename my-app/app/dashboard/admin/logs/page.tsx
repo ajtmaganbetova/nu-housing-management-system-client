@@ -1,7 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  Activity,
+  AlertCircle,
+  History,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+} from "lucide-react";
+import { SidebarHousing } from "@/components/dashboard/SidebarHousing";
 import { apiJson } from "@/lib/auth";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 
@@ -17,26 +26,26 @@ interface LogEntry {
 }
 
 const actionStyles: Record<string, string> = {
-  submit: "bg-blue-50 text-blue-700 border border-blue-200",
-  approve: "bg-green-50 text-green-700 border border-green-200",
-  reject: "bg-red-50 text-red-700 border border-red-200",
-  create: "bg-purple-50 text-purple-700 border border-purple-200",
-  delete: "bg-orange-50 text-orange-700 border border-orange-200",
-  login: "bg-slate-50 text-slate-700 border border-slate-200",
-  login_failed: "bg-red-50 text-red-700 border border-red-200",
-  register: "bg-teal-50 text-teal-700 border border-teal-200",
+  submit: "border-blue-200 bg-blue-50 text-blue-700",
+  approve: "border-green-200 bg-green-50 text-green-700",
+  reject: "border-red-200 bg-red-50 text-red-700",
+  create: "border-purple-200 bg-purple-50 text-purple-700",
+  delete: "border-orange-200 bg-orange-50 text-orange-700",
+  login: "border-slate-200 bg-slate-50 text-slate-700",
+  login_failed: "border-red-200 bg-red-50 text-red-700",
+  register: "border-teal-200 bg-teal-50 text-teal-700",
+  update_settings: "border-amber-200 bg-amber-50 text-amber-700",
 };
 
-const actionIcons: Record<string, string> = {
-  submit: "📨",
-  approve: "✅",
-  reject: "❌",
-  create: "➕",
-  delete: "🗑️",
-  login: "🔑",
-  login_failed: "🚫",
-  register: "🆕",
-};
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export default function LogsPage() {
   const router = useRouter();
@@ -45,131 +54,240 @@ export default function LogsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchLogs = async (showRefreshState = false) => {
+    if (showRefreshState) setIsRefreshing(true);
+    else setLoading(true);
+
+    try {
+      const data = await apiJson<LogEntry[]>("/admin/logs", {
+        method: "GET",
+      });
+      setLogs(Array.isArray(data) ? data : []);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load logs");
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
 
-    const fetchLogs = async () => {
-      try {
-        const data = await apiJson<LogEntry[]>("/admin/logs", {
-          method: "GET",
-        });
-        setLogs(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load logs");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     void fetchLogs();
-    const interval = setInterval(fetchLogs, 30_000);
+    const interval = setInterval(() => {
+      void fetchLogs(true);
+    }, 30_000);
+
     return () => clearInterval(interval);
   }, [authLoading, isAuthenticated]);
 
-  const filteredLogs = (logs ?? []).filter((log) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
+  const filteredLogs = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return logs;
+
+    return logs.filter((log) => {
+      return (
+        log.action.toLowerCase().includes(query) ||
+        log.entity.toLowerCase().includes(query) ||
+        (log.actor_email ?? "").toLowerCase().includes(query) ||
+        (log.actor_nu_id ?? "").toLowerCase().includes(query) ||
+        String(log.entity_id ?? "").includes(query)
+      );
+    });
+  }, [logs, search]);
+
+  const failureCount = logs.filter((log) => log.action === "login_failed").length;
+  const createCount = logs.filter((log) => log.action === "create").length;
+  const deleteCount = logs.filter((log) => log.action === "delete").length;
+
+  if (authLoading || !isAuthenticated || loading) {
     return (
-      log.action.toLowerCase().includes(q) ||
-      log.entity.toLowerCase().includes(q) ||
-      log.actor_email?.toLowerCase().includes(q) ||
-      log.actor_nu_id?.toLowerCase().includes(q)
+      <div className="flex min-h-screen items-center justify-center bg-[#f8faff]">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#d9e0f2] border-t-[#6f63ff]" />
+      </div>
     );
-  });
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-5">
-          <button
-            onClick={() => router.push("/dashboard/admin")}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition shadow-sm"
-          >
-            ← Back to Dashboard
-          </button>
-        </div>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(195,198,244,0.90),_rgba(239,241,247,0.88)_35%,_rgba(232,236,247,0.94)_70%,_rgba(211,216,243,0.98)_100%)]">
+      <div className="mx-auto max-w-[1600px] px-4 py-8 md:px-6 lg:px-10">
+        <div className="grid items-start gap-10 xl:grid-cols-[300px_1fr]">
+          <SidebarHousing
+            activeSection="logs"
+            onSectionChange={(section) =>
+              router.push(
+                section === "dashboard"
+                  ? "/dashboard/admin"
+                  : `/dashboard/admin/${section}`,
+              )
+            }
+            onLogout={() => {
+              localStorage.clear();
+              router.push("/auth/login");
+            }}
+          />
 
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-900">System Logs</h1>
-          <p className="mt-1 text-slate-500">
-            Monitor important events in the housing management system.
-          </p>
-        </div>
+          <div className="space-y-6 min-w-0">
+            <div className="rounded-[40px] border border-white/70 bg-white/80 p-6 shadow-[0_18px_50px_rgba(122,132,173,0.12)] backdrop-blur md:p-10">
+              <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#6f63ff]">
+                    <ShieldCheck size={14} />
+                    <span>Audit Trail</span>
+                  </div>
+                  <h1 className="text-3xl font-extrabold tracking-tight text-[#17172f] md:text-4xl">
+                    System Logs
+                  </h1>
+                  <p className="max-w-3xl text-sm text-[#7d879b]">
+                    Inspect the full admin-visible action history across user access,
+                    account management, and housing operations.
+                  </p>
+                </div>
 
-        {/* Search */}
-        <div className="mb-4">
-          <div className="relative w-full sm:max-w-sm">
-            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
-              🔍
-            </span>
-            <input
-              type="text"
-              placeholder="Search by action, entity, email or ID…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-md border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-
-        {(authLoading || !isAuthenticated || loading) && <p className="text-sm text-slate-400 mb-4">Loading logs…</p>}
-        {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm max-h-[65vh] overflow-auto">
-          {!loading && filteredLogs.length === 0 ? (
-            <div className="p-6 text-sm text-slate-400 text-center">
-              No logs match your filter.
+                <button
+                  type="button"
+                  onClick={() => void fetchLogs(true)}
+                  className="inline-flex items-center justify-center gap-2 self-start rounded-2xl bg-[#17172f] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#2a2a4a] active:scale-95"
+                >
+                  <RefreshCw
+                    size={16}
+                    className={isRefreshing ? "animate-spin" : "transition-transform"}
+                  />
+                  {isRefreshing ? "Refreshing..." : "Refresh Logs"}
+                </button>
+              </div>
             </div>
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {filteredLogs.map((log) => (
-                <li key={log.id} className="px-4 py-4 flex gap-4 items-start">
-                  {/* Action badge */}
-                  <div className="mt-0.5 shrink-0">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                        actionStyles[log.action] ??
-                        "bg-slate-100 text-slate-600 border border-slate-200"
-                      }`}
+
+            <div className="grid gap-5 md:grid-cols-3">
+              <MiniStatCard
+                icon={<History size={20} />}
+                label="Total Logs"
+                value={logs.length}
+                color="text-[#6f63ff]"
+                glow="bg-[#6f63ff]/10"
+              />
+              <MiniStatCard
+                icon={<AlertCircle size={20} />}
+                label="Login Failures"
+                value={failureCount}
+                color="text-red-600"
+                glow="bg-red-500/10"
+              />
+              <MiniStatCard
+                icon={<Activity size={20} />}
+                label="Create/Delete"
+                value={createCount + deleteCount}
+                color="text-emerald-600"
+                glow="bg-emerald-500/10"
+              />
+            </div>
+
+            <div className="rounded-[32px] border border-white/70 bg-white/85 p-6 shadow-[0_18px_50px_rgba(122,132,173,0.12)]">
+              <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-lg font-semibold text-[#17172f]">
+                    Log Explorer
+                  </p>
+                  <p className="mt-1 text-sm text-[#667085]">
+                    Search by action, entity, email, NU ID, or record ID.
+                  </p>
+                </div>
+
+                <div className="relative w-full lg:max-w-sm">
+                  <Search
+                    size={18}
+                    className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#9aa3b8]"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search logs..."
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    className="w-full rounded-2xl border border-[#edf1f8] bg-white py-3 pl-12 pr-4 text-sm text-[#17172f] shadow-sm outline-none transition focus:border-[#6f63ff] focus:ring-4 focus:ring-[#6f63ff]/10"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
+
+              {filteredLogs.length === 0 ? (
+                <div className="rounded-[24px] border border-dashed border-[#e4e7f0] bg-[#f8faff] px-4 py-10 text-center text-sm text-[#7d879b]">
+                  No logs match your filter.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredLogs.map((log) => (
+                    <article
+                      key={log.id}
+                      className="rounded-[24px] border border-[#edf1f8] bg-[#f8faff] px-4 py-4"
                     >
-                      {actionIcons[log.action] ?? "📋"} {log.action.toUpperCase()}
-                    </span>
-                  </div>
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${actionStyles[log.action] ?? "border-slate-200 bg-slate-50 text-slate-700"}`}
+                            >
+                              {log.action}
+                            </span>
+                            <span className="text-sm font-semibold text-[#17172f]">
+                              {log.entity}
+                              {log.entity_id ? ` #${log.entity_id}` : ""}
+                            </span>
+                          </div>
 
-                  {/* Details */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-900">
-                      <span className="font-mono text-blue-600">{log.entity}</span>
-                      {log.entity_id && (
-                        <span className="text-slate-500"> #{log.entity_id}</span>
-                      )}
-                    </p>
+                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-xs text-[#7d879b]">
+                            <span>{log.actor_email || "System action"}</span>
+                            {log.actor_nu_id && <span>{log.actor_nu_id}</span>}
+                            <span>{formatDate(log.timestamp)}</span>
+                          </div>
+                        </div>
 
-                    {/* Actor info */}
-                    {log.actor_email && (
-                      <p className="text-xs text-slate-600 mt-0.5">
-                        👤 <span className="font-medium">{log.actor_email}</span>
-                        {log.actor_nu_id && (
-                          <span className="text-slate-400"> · {log.actor_nu_id}</span>
-                        )}
-                      </p>
-                    )}
-
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      🕐 {new Date(log.timestamp).toLocaleString()}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+                        <div className="shrink-0 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-[#667085]">
+                          Log #{log.id}
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function MiniStatCard({
+  icon,
+  label,
+  value,
+  color,
+  glow,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  color: string;
+  glow: string;
+}) {
+  return (
+    <div className="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_18px_50px_rgba(122,132,173,0.12)]">
+      <div className="flex items-center gap-3">
+        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${glow} ${color}`}>
+          {icon}
+        </div>
+        <p className="text-sm font-semibold text-[#98a2b3]">{label}</p>
+      </div>
+      <p className="mt-3 text-3xl font-bold text-[#17172f]">{value}</p>
     </div>
   );
 }
