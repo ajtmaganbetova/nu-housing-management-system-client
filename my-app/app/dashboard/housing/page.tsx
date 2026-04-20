@@ -157,37 +157,26 @@ export default function HousingDashboard() {
     setIsSendingEmail(true);
 
     try {
-      const apps =
-        (await apiJson<HousingApplicationSummary[]>("/housing/applications", {
-          method: "GET",
-        })) || [];
-
-      const rejectedEmails = apps
-        .filter((app) => app.status === "rejected")
-        .map((app) => app.email)
-        .filter(Boolean);
-
-      if (rejectedEmails.length === 0) {
-        alert("No rejected applications found.");
-        return;
-      }
-
-      await apiJson("/housing/notify-rejected", {
+      const result = await apiJson<{
+        sent?: number;
+        failed?: number;
+        skipped?: number;
+      }>("/housing/notify-rejected", {
         method: "POST",
-        body: JSON.stringify({
-          emails: rejectedEmails,
-          subject: "Application Update: Please Re-submit",
-          message:
-            "Please re-submit your application. We have updated our requirements.",
-        }),
       });
 
       alert(
-        `Success! Notifications sent to ${rejectedEmails.length} students.`,
+        `Notifications sent to ${result.sent ?? 0} rejected students. Failed: ${
+          result.failed ?? 0
+        }. Skipped: ${result.skipped ?? 0}.`,
       );
     } catch (error) {
       console.error("Failed to send emails:", error);
-      alert("Email automation failed. Please check backend logs.");
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Email automation failed. Please check backend logs.",
+      );
     } finally {
       setIsSendingEmail(false);
     }
@@ -204,7 +193,6 @@ export default function HousingDashboard() {
           ? {
               applications_enabled: true,
               application_open: new Date().toISOString().slice(0, 10),
-              application_close: "",
             }
           : {
               applications_enabled: false,
@@ -213,7 +201,11 @@ export default function HousingDashboard() {
       setSystemSettings(settings);
     } catch (error) {
       console.error("Failed to update application status:", error);
-      alert("Failed to update application status. Please try again.");
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to update application status. Please try again.",
+      );
     } finally {
       setIsTogglingApplications(false);
     }
@@ -328,7 +320,7 @@ export default function HousingDashboard() {
                   </div>
 
                   <div className="flex flex-wrap gap-3">
-                    {!isAppOpen && (
+                    {isAppOpen && (
                       <button
                         onClick={handleSendEmails}
                         disabled={isSendingEmail}

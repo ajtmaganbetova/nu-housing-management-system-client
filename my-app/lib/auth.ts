@@ -132,10 +132,16 @@ export async function apiJson<T>(
       clearStoredSession();
     }
 
+    const errorMessage =
+      typeof data === "object" && data && "error" in data ? data.error : null;
+    const details =
+      typeof data === "object" && data && "details" in data
+        ? data.details
+        : null;
     const message =
-      (typeof data === "object" && data && "error" in data && data.error) ||
-      response.statusText ||
-      "Request failed";
+      errorMessage && typeof details === "string" && details.trim()
+        ? `${String(errorMessage)}: ${details}`
+        : errorMessage || response.statusText || "Request failed";
     throw new Error(String(message));
   }
 

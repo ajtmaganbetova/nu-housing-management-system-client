@@ -22,7 +22,16 @@ import {
 interface Application {
   id: number;
   student_id: number;
+  applicant_type?: string;
+  student_number?: string;
+  name_surname?: string;
   fio?: string;
+  birth_date?: string;
+  iin?: string;
+  school?: string;
+  level?: string;
+  passport_number?: string;
+  comments?: string;
   year: number;
   major: string;
   gender: string;
@@ -57,7 +66,15 @@ interface Application {
 }
 
 interface ApplicationPatchPayload {
+  applicant_type: string;
+  name_surname: string;
   fio: string;
+  birth_date: string;
+  iin: string;
+  school: string;
+  level: string;
+  passport_number: string;
+  comments: string;
   year: number;
   major: string;
   gender: string;
@@ -66,17 +83,45 @@ interface ApplicationPatchPayload {
 }
 
 interface EditableApplicationFields {
+  applicantType: string;
+  nameSurname: string;
+  fio: string;
+  gender: string;
+  phone: string;
+  birthDate: string;
+  iin: string;
+  school: string;
+  level: string;
+  yearOfStudy: string;
+  major: string;
+  passportNumber: string;
+  roomPreference: string;
   apartmentInAstana: string;
   parentsWorkInAstana: string;
   astanaResident: string;
   preferredRoommate: string;
+  comments: string;
 }
 
 const editableInfoKeys = {
+  applicantType: ["Applicant Type"],
+  nameSurname: ["Name Surname", "Full Name"],
+  fio: ["ФИО", "FIO"],
+  gender: ["Gender"],
+  phone: ["Phone"],
+  birthDate: ["Date of Birth"],
+  iin: ["ИИН", "IIN"],
+  school: ["School"],
+  level: ["Level"],
+  yearOfStudy: ["Year of Study", "Year"],
+  major: ["Major"],
+  passportNumber: ["Passport"],
+  roomPreference: ["Room Preference", "Room preference", "Room Type"],
   apartmentInAstana: ["Apartment in Astana"],
   parentsWorkInAstana: ["Parents work in Astana"],
   astanaResident: ["Astana resident"],
   preferredRoommate: ["Preferred Roommate"],
+  comments: ["Comments"],
 } as const;
 
 function readFirstString(values: unknown[]) {
@@ -174,6 +219,7 @@ function getApplicationDisplayName(
   info: Record<string, string>,
 ) {
   return readFirstString([
+    application.name_surname,
     info["Name Surname"],
     info["Full Name"],
     [info["First Name"], info["Last Name"]].filter(Boolean).join(" "),
@@ -217,7 +263,13 @@ function getApplicationMajor(
 function normalizeBinaryChoice(value?: string) {
   const normalized = value?.trim().toLowerCase();
   if (normalized === "yes" || normalized === "no") return normalized;
-  return value ?? "";
+  return value ?? ""; 
+}
+
+function formatDateForInput(value?: string | null) {
+  if (!value) return "";
+  const dateOnly = value.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateOnly) ? dateOnly : "";
 }
 
 function updateAdditionalInfo(
@@ -226,10 +278,27 @@ function updateAdditionalInfo(
 ) {
   const lines = currentInfo ? currentInfo.split("\n") : [];
   const updates: Record<string, string> = {
+    applicantType: fields.applicantType,
+    nameSurname: fields.nameSurname.trim(),
+    fio: fields.fio.trim(),
+    gender: fields.gender,
+    phone: fields.phone.trim(),
+    birthDate: fields.birthDate,
+    iin: fields.iin.trim(),
+    school: fields.school.trim(),
+    level: fields.level.trim(),
+    yearOfStudy: fields.yearOfStudy.trim(),
+    major: fields.level === "NUFYP" ? "NUFYP" : fields.major.trim(),
+    passportNumber:
+      fields.applicantType === "international"
+        ? fields.passportNumber.trim()
+        : "",
+    roomPreference: fields.roomPreference.trim(),
     apartmentInAstana: fields.apartmentInAstana,
     parentsWorkInAstana: fields.parentsWorkInAstana,
     astanaResident: fields.astanaResident,
     preferredRoommate: fields.preferredRoommate.trim(),
+    comments: fields.comments.trim(),
   };
   const seen = new Set<keyof typeof editableInfoKeys>();
 
@@ -263,10 +332,29 @@ function createEditFields(application: Application): EditableApplicationFields {
   const info = parseAdditionalInfo(application.additional_info);
 
   return {
+    applicantType:
+      application.applicant_type ?? info["Applicant Type"] ?? "local",
+    nameSurname:
+      application.name_surname ??
+      readFirstString([info["Name Surname"], info["Full Name"]]) ??
+      "",
+    fio: getApplicationFio(application, info) ?? "",
+    gender: info["Gender"] || application.gender || "",
+    phone: info["Phone"] ?? "",
+    birthDate:
+      formatDateForInput(application.birth_date) || info["Date of Birth"] || "",
+    iin: application.iin ?? info["ИИН"] ?? info["IIN"] ?? "",
+    school: application.school ?? info["School"] ?? "",
+    level: application.level ?? info["Level"] ?? "",
+    yearOfStudy: getApplicationYear(application, info) ?? "",
+    major: getApplicationMajor(application, info) ?? "",
+    passportNumber: application.passport_number ?? info["Passport"] ?? "",
+    roomPreference: getRoomPreference(application, info) ?? "",
     apartmentInAstana: normalizeBinaryChoice(info["Apartment in Astana"]),
     parentsWorkInAstana: normalizeBinaryChoice(info["Parents work in Astana"]),
     astanaResident: normalizeBinaryChoice(info["Astana resident"]),
     preferredRoommate: info["Preferred Roommate"] ?? "",
+    comments: application.comments ?? info["Comments"] ?? "",
   };
 }
 
@@ -284,7 +372,21 @@ function normalizeUpdatedApplication(
     return {
       ...fallback,
       ...(value as Partial<Application>),
+      applicant_type:
+        (value as Partial<Application>).applicant_type ??
+        submitted.applicant_type,
+      name_surname:
+        (value as Partial<Application>).name_surname ?? submitted.name_surname,
       fio: (value as Partial<Application>).fio ?? submitted.fio,
+      birth_date:
+        (value as Partial<Application>).birth_date ?? submitted.birth_date,
+      iin: (value as Partial<Application>).iin ?? submitted.iin,
+      school: (value as Partial<Application>).school ?? submitted.school,
+      level: (value as Partial<Application>).level ?? submitted.level,
+      passport_number:
+        (value as Partial<Application>).passport_number ??
+        submitted.passport_number,
+      comments: (value as Partial<Application>).comments ?? submitted.comments,
       year: (value as Partial<Application>).year ?? submitted.year,
       major: (value as Partial<Application>).major ?? submitted.major,
       gender: (value as Partial<Application>).gender ?? submitted.gender,
@@ -385,21 +487,53 @@ function InlineTextField({
   name,
   value,
   onChange,
+  type = "text",
 }: {
   name: keyof EditableApplicationFields;
   value: string;
+  type?: string;
   onChange: (
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => void;
 }) {
   return (
     <input
-      type="text"
+      type={type}
       name={name}
       value={value}
       onChange={onChange}
       className={inlineInputClass}
     />
+  );
+}
+
+function InlineSelectField({
+  name,
+  value,
+  options,
+  onChange,
+}: {
+  name: keyof EditableApplicationFields;
+  value: string;
+  options: Array<{ label: string; value: string }>;
+  onChange: (
+    event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => void;
+}) {
+  return (
+    <select
+      name={name}
+      value={value}
+      onChange={onChange}
+      className={inlineInputClass}
+    >
+      <option value="">Select option</option>
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -442,6 +576,31 @@ const docTypeLabels: Record<string, string> = {
   additional: "Additional Documents",
 };
 
+const applicantTypeOptions = [
+  { label: "Local", value: "local" },
+  { label: "International", value: "international" },
+];
+
+const genderOptions = [
+  { label: "Female", value: "Female" },
+  { label: "Male", value: "Male" },
+  { label: "Other", value: "Other" },
+];
+
+const levelOptions = [
+  { label: "NUFYP", value: "NUFYP" },
+  { label: "Undergraduate", value: "UG" },
+  { label: "MD (Medical Doctor)", value: "MD (Medical Doctor)" },
+];
+
+const schoolOptions = [
+  { label: "CPS", value: "CPS" },
+  { label: "SEDS", value: "SEDS" },
+  { label: "SSH", value: "SSH" },
+  { label: "SMG", value: "SMG" },
+  { label: "NUSOM", value: "NUSOM" },
+];
+
 function ApplicationCard({
   application,
   onApplicationUpdated,
@@ -472,7 +631,6 @@ function ApplicationCard({
   const displayName = getApplicationDisplayName(application, info);
   const currentYear = getApplicationYear(application, info);
   const currentMajor = getApplicationMajor(application, info);
-  const currentRoomPreference = getRoomPreference(application, info);
   const assignedRoom = formatRoomAllocation(
     application.room_allocation ?? application.roomAllocation ?? application,
   );
@@ -484,8 +642,10 @@ function ApplicationCard({
   const isApproved = application.status.toLowerCase() === "approved";
 
   useEffect(() => {
-    setEditFields(createEditFields(application));
-  }, [application]);
+    if (!isEditing) {
+      setEditFields(createEditFields(application));
+    }
+  }, [application, isEditing]);
 
   const fetchDocuments = async () => {
     if (documents.length > 0) return;
@@ -566,7 +726,36 @@ function ApplicationCard({
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = event.target;
-    setEditFields((current) => ({ ...current, [name]: value }));
+    setEditFields((current) => {
+      if (name === "iin" && value !== "" && !/^\d{0,12}$/.test(value)) {
+        return current;
+      }
+      if (
+        name === "preferredRoommate" &&
+        value !== "" &&
+        !/^\d{0,9}$/.test(value)
+      ) {
+        return current;
+      }
+
+      const next = { ...current, [name]: value };
+      if (name === "applicantType" && value === "local") {
+        next.passportNumber = "";
+      }
+      if (name === "level" && value === "NUFYP") {
+        next.school = "CPS";
+        next.major = "Foundation";
+        next.yearOfStudy = "0";
+      }
+      if (name === "level" && value === "UG") {
+        const allowed = ["SEDS", "SSH", "SMG", "NUSOM"];
+        if (!allowed.includes(next.school)) next.school = "";
+      }
+      if (name === "level" && value === "MD (Medical Doctor)") {
+        next.school = "NUSOM";
+      }
+      return next;
+    });
   };
 
   const handleStartEdit = () => {
@@ -586,14 +775,27 @@ function ApplicationCard({
   const handleSaveEdit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const stableYear = Number(currentYear ?? application.year);
+    const stableYear = Number(editFields.yearOfStudy || application.year);
+    const normalizedMajor =
+      editFields.level === "NUFYP" ? "NUFYP" : editFields.major.trim();
 
     const payload: ApplicationPatchPayload = {
-      fio: currentFio ?? "",
+      applicant_type: editFields.applicantType,
+      name_surname: editFields.nameSurname.trim(),
+      fio: editFields.fio.trim(),
+      birth_date: editFields.birthDate,
+      iin: editFields.iin.trim(),
+      school: editFields.school.trim(),
+      level: editFields.level.trim(),
+      passport_number:
+        editFields.applicantType === "international"
+          ? editFields.passportNumber.trim()
+          : "",
+      comments: editFields.comments.trim(),
       year: Number.isInteger(stableYear) ? stableYear : application.year,
-      major: currentMajor ?? application.major,
-      gender: info["Gender"] || application.gender,
-      room_preference: currentRoomPreference ?? "",
+      major: normalizedMajor || application.major,
+      gender: editFields.gender || application.gender,
+      room_preference: editFields.roomPreference.trim(),
       additional_info: updateAdditionalInfo(
         application.additional_info,
         editFields,
@@ -766,21 +968,116 @@ function ApplicationCard({
               <h5 className="text-sm font-semibold uppercase tracking-[0.18em] text-[#9aa3b8]">
                 Student information
               </h5>
-              <InfoRow label="Applicant type" value={info["Applicant Type"]} />
+              <InfoRow
+                label="Applicant type"
+                value={info["Applicant Type"] || application.applicant_type}
+                forceVisible={isEditing}
+              >
+                {isEditing ? (
+                  <InlineSelectField
+                    name="applicantType"
+                    value={editFields.applicantType}
+                    options={applicantTypeOptions}
+                    onChange={handleEditFieldChange}
+                  />
+                ) : undefined}
+              </InfoRow>
               <InfoRow label="Student ID" value={info["Student ID"]} />
               <InfoRow
                 label="Name surname"
                 value={displayName ?? undefined}
-              />
-              <InfoRow label="ФИО" value={currentFio ?? undefined} />
+                forceVisible={isEditing}
+              >
+                {isEditing ? (
+                  <InlineTextField
+                    name="nameSurname"
+                    value={editFields.nameSurname}
+                    onChange={handleEditFieldChange}
+                  />
+                ) : undefined}
+              </InfoRow>
+              <InfoRow
+                label="ФИО"
+                value={currentFio ?? undefined}
+                forceVisible={isEditing}
+              >
+                {isEditing ? (
+                  <InlineTextField
+                    name="fio"
+                    value={editFields.fio}
+                    onChange={handleEditFieldChange}
+                  />
+                ) : undefined}
+              </InfoRow>
               <InfoRow
                 label="Gender"
                 value={info["Gender"] || application.gender}
-              />
-              <InfoRow label="Phone" value={info["Phone"]} />
-              <InfoRow label="Date of birth" value={info["Date of Birth"]} />
-              <InfoRow label="ИИН" value={info["ИИН"]} />
-              <InfoRow label="Passport" value={info["Passport"]} />
+                forceVisible={isEditing}
+              >
+                {isEditing ? (
+                  <InlineSelectField
+                    name="gender"
+                    value={editFields.gender}
+                    options={genderOptions}
+                    onChange={handleEditFieldChange}
+                  />
+                ) : undefined}
+              </InfoRow>
+              <InfoRow
+                label="Phone"
+                value={info["Phone"]}
+                forceVisible={isEditing}
+              >
+                {isEditing ? (
+                  <InlineTextField
+                    name="phone"
+                    value={editFields.phone}
+                    onChange={handleEditFieldChange}
+                  />
+                ) : undefined}
+              </InfoRow>
+              <InfoRow
+                label="Date of birth"
+                value={info["Date of Birth"]}
+                forceVisible={isEditing}
+              >
+                {isEditing ? (
+                  <InlineTextField
+                    type="date"
+                    name="birthDate"
+                    value={editFields.birthDate}
+                    onChange={handleEditFieldChange}
+                  />
+                ) : undefined}
+              </InfoRow>
+              <InfoRow
+                label="ИИН"
+                value={info["ИИН"] || application.iin}
+                forceVisible={isEditing}
+              >
+                {isEditing ? (
+                  <InlineTextField
+                    name="iin"
+                    value={editFields.iin}
+                    onChange={handleEditFieldChange}
+                  />
+                ) : undefined}
+              </InfoRow>
+              <InfoRow
+                label="Passport"
+                value={info["Passport"] || application.passport_number}
+                forceVisible={
+                  isEditing && editFields.applicantType === "international"
+                }
+              >
+                {isEditing && editFields.applicantType === "international" ? (
+                  <InlineTextField
+                    name="passportNumber"
+                    value={editFields.passportNumber}
+                    onChange={handleEditFieldChange}
+                  />
+                ) : undefined}
+              </InfoRow>
             </div>
 
 
@@ -791,15 +1088,60 @@ function ApplicationCard({
               </h5>
               <InfoRow
                 label="School"
-                value={info["School"] || application.major}
-              />
-              <InfoRow label="Level" value={info["Level"]} />
-              <InfoRow label="Major" value={currentMajor ?? undefined} />
-              <InfoRow label="Year" value={currentYear ?? undefined} />
+                value={info["School"] || application.school}
+                forceVisible={isEditing}
+              >
+                {isEditing ? (
+                  <InlineSelectField
+                    name="school"
+                    value={editFields.school}
+                    options={schoolOptions}
+                    onChange={handleEditFieldChange}
+                  />
+                ) : undefined}
+              </InfoRow>
               <InfoRow
-                label="Room preference"
-                value={currentRoomPreference ?? undefined}
-              />
+                label="Level"
+                value={info["Level"] || application.level}
+                forceVisible={isEditing}
+              >
+                {isEditing ? (
+                  <InlineSelectField
+                    name="level"
+                    value={editFields.level}
+                    options={levelOptions}
+                    onChange={handleEditFieldChange}
+                  />
+                ) : undefined}
+              </InfoRow>
+              <InfoRow
+                label="Major"
+                value={currentMajor ?? undefined}
+                forceVisible={isEditing}
+              >
+                {isEditing ? (
+                  <InlineTextField
+                    name="major"
+                    value={editFields.major}
+                    onChange={handleEditFieldChange}
+                  />
+                ) : undefined}
+              </InfoRow>
+              <InfoRow
+                label="Year"
+                value={currentYear ?? undefined}
+                forceVisible={isEditing}
+              >
+                {isEditing ? (
+                  <InlineTextField
+                    type="number"
+                    name="yearOfStudy"
+                    value={editFields.yearOfStudy}
+                    onChange={handleEditFieldChange}
+                  />
+                ) : undefined}
+              </InfoRow>
+              
               <InfoRow
                 label="Apartment in Astana"
                 value={info["Apartment in Astana"]}
@@ -848,6 +1190,19 @@ function ApplicationCard({
                   <InlineTextField
                     name="preferredRoommate"
                     value={editFields.preferredRoommate}
+                    onChange={handleEditFieldChange}
+                  />
+                ) : undefined}
+              </InfoRow>
+              <InfoRow
+                label="Comments"
+                value={info["Comments"] || application.comments}
+                forceVisible={isEditing}
+              >
+                {isEditing ? (
+                  <InlineTextField
+                    name="comments"
+                    value={editFields.comments}
                     onChange={handleEditFieldChange}
                   />
                 ) : undefined}
