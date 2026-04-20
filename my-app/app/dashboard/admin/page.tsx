@@ -40,6 +40,19 @@ function formatDate(dateString: string) {
   });
 }
 
+function formatAlertAction(action: string) {
+  switch (action) {
+    case "login_failed":
+      return "Login failed";
+    case "delete":
+      return "Deleted";
+    case "update_role":
+      return "Role changed";
+    default:
+      return action.replaceAll("_", " ");
+  }
+}
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const { isLoading: authLoading, isAuthenticated } = useAuthGuard("admin");
@@ -84,7 +97,9 @@ export default function AdminDashboardPage() {
   const recentAlerts = useMemo(
     () =>
       logs
-        .filter((log) => ["login_failed", "delete"].includes(log.action))
+        .filter((log) =>
+          ["login_failed", "delete", "update_role"].includes(log.action),
+        )
         .slice(0, 6),
     [logs],
   );
@@ -204,7 +219,7 @@ export default function AdminDashboardPage() {
                       >
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#667085]">
-                            {log.action}
+                            {formatAlertAction(log.action)}
                           </span>
                           <span className="text-sm font-semibold text-[#17172f]">
                             {log.entity}

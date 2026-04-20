@@ -11,6 +11,7 @@ import {
   getApplicantType,
   getPassportNumber,
   parseAdditionalInfo,
+  readFirstString,
 } from "@/lib/housing-applications";
 import { RefreshCw, Search, UserRound } from "lucide-react";
 
@@ -28,6 +29,37 @@ interface Application {
   submitted_at: string;
   updated_at: string;
   rejected_reason?: string;
+  paid?: boolean;
+  payed?: boolean;
+  is_paid?: boolean;
+  isPayed?: boolean;
+  payment_status?: string | null;
+  paymentStatus?: string | null;
+  paid_at?: string | null;
+  paidAt?: string | null;
+}
+
+function isApplicationPaid(application: Application) {
+  const booleanValue = [
+    application.paid,
+    application.payed,
+    application.is_paid,
+    application.isPayed,
+  ].find((value) => typeof value === "boolean");
+
+  if (typeof booleanValue === "boolean") return booleanValue;
+
+  const normalizedStatus = readFirstString([
+    application.payment_status,
+    application.paymentStatus,
+    application.status,
+  ])?.toLowerCase();
+
+  return normalizedStatus
+    ? ["paid", "payed", "completed", "success", "successful", "succeeded"].includes(
+        normalizedStatus,
+      )
+    : false;
 }
 
 function formatDate(dateString: string) {
@@ -98,6 +130,7 @@ function SearchResultCard({ application }: { application: Application }) {
   const studentId = info["Student ID"] || String(application.student_id);
   const school = info["School"] || application.major;
   const phone = info["Phone"];
+  const isPaid = isApplicationPaid(application);
 
   const fetchDocuments = async () => {
     if (documents.length > 0) return;
@@ -157,6 +190,11 @@ function SearchResultCard({ application }: { application: Application }) {
                 >
                   {application.status}
                 </span>
+                {isPaid && (
+                  <span className="rounded-md border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-black uppercase text-sky-700">
+                    Paid
+                  </span>
+                )}
                 <span className="text-xs tracking-tight text-[#9aa3b8]">
                   {formatDate(application.submitted_at)}
                 </span>
@@ -326,7 +364,7 @@ export default function StudentSearchSection() {
   const fetchApplications = async (
     showRefreshState = false,
     searchQuery = "",
-    searchStatus = "all"
+    searchStatus = "all",
   ) => {
     if (showRefreshState) setIsRefreshing(true);
     else setIsLoading(true);
@@ -335,7 +373,9 @@ export default function StudentSearchSection() {
       const params = new URLSearchParams();
       const normalizedQuery = searchQuery.trim();
       if (normalizedQuery) params.set("search", normalizedQuery);
-      if (searchStatus !== "all") params.set("status", searchStatus);
+      if (searchStatus !== "all" && searchStatus !== "paid") {
+        params.set("status", searchStatus);
+      }
 
       const endpoint = params.toString()
         ? `/housing/applications?${params.toString()}`
@@ -359,6 +399,11 @@ export default function StudentSearchSection() {
 
     return () => window.clearTimeout(timeoutId);
   }, [query, status]);
+
+  const filteredApplications =
+    status === "paid"
+      ? applications.filter((application) => isApplicationPaid(application))
+      : applications;
 
   return (
     <section className="space-y-6">
@@ -412,6 +457,7 @@ export default function StudentSearchSection() {
             <option value="all">All statuses</option>
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
+            <option value="paid">Paid</option>
             <option value="rejected">Rejected</option>
           </select>
         </div>
@@ -423,8 +469,10 @@ export default function StudentSearchSection() {
                 Search results
               </p>
               <p className="mt-1 text-sm text-[#667085]">
-                {applications.length} matching{" "}
-                {applications.length === 1 ? "application" : "applications"}
+                {filteredApplications.length} matching{" "}
+                {filteredApplications.length === 1
+                  ? "application"
+                  : "applications"}
                 {query.trim() ? ` for "${query.trim()}"` : ""}.
               </p>
             </div>
@@ -443,7 +491,7 @@ export default function StudentSearchSection() {
         <div className="rounded-[26px] border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
           {error}
         </div>
-      ) : applications.length === 0 ? (
+      ) : filteredApplications.length === 0 ? (
         <div className="rounded-[30px] border border-white/70 bg-white/78 px-6 py-12 text-center shadow-[0_18px_42px_rgba(122,132,173,0.14)]">
           <p className="text-lg font-medium text-[#17172f]">
             No students found
@@ -455,7 +503,7 @@ export default function StudentSearchSection() {
         </div>
       ) : (
         <div className="space-y-4">
-          {applications.map((application) => (
+          {filteredApplications.map((application) => (
             <SearchResultCard key={application.id} application={application} />
           ))}
         </div>

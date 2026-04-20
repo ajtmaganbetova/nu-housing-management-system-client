@@ -7,6 +7,14 @@ import { BarChart3, CheckCircle2, Clock3, RefreshCw, Users } from "lucide-react"
 interface Application {
   id: number;
   student_id: number;
+  fio?: string;
+  full_name?: string;
+  fullName?: string;
+  name?: string;
+  name_surname?: string;
+  nameSurname?: string;
+  student_number?: string;
+  studentNumber?: string;
   year: number;
   major: string;
   gender: string;
@@ -48,6 +56,22 @@ function getInventoryRoomLabel(room: BackendDormInventoryRow) {
   if (!DORM_BLOCKS.includes(block as (typeof DORM_BLOCKS)[number])) return null;
 
   return `${block}.${roomNumber}`;
+}
+
+function getApplicationDisplayName(application: Application) {
+  return (
+    readFirstString([
+      application.full_name,
+      application.fullName,
+      application.name,
+      application.name_surname,
+      application.nameSurname,
+      application.fio,
+      application.student_number,
+      application.studentNumber,
+      application.student_id,
+    ]) || `Application #${application.id}`
+  );
 }
 
 export default function OccupancyStatsSection() {
@@ -106,22 +130,23 @@ export default function OccupancyStatsSection() {
     const assignedApplicationIds = new Set<number>();
 
     inventoryRows.forEach((row) => {
+      if (typeof row.application_id === "number" && Number.isFinite(row.application_id)) {
+        assignedApplicationIds.add(row.application_id);
+      }
+
       const roomLabel = getInventoryRoomLabel(row);
       if (!roomLabel) return;
 
       occupiedRoomLabels.add(roomLabel);
-
-      if (typeof row.application_id === "number" && Number.isFinite(row.application_id)) {
-        assignedApplicationIds.add(row.application_id);
-      }
     });
 
     const occupiedRooms = occupiedRoomLabels.size;
-    const waitingApproved = applications.filter(
+    const waitingApprovedApplications = applications.filter(
       (application) =>
         application.status === "approved" &&
         !assignedApplicationIds.has(application.id)
-    ).length;
+    );
+    const waitingApproved = waitingApprovedApplications.length;
 
     const occupancyRate =
       TOTAL_ROOMS === 0 ? 0 : (occupiedRooms / TOTAL_ROOMS) * 100;
@@ -138,6 +163,7 @@ export default function OccupancyStatsSection() {
       totalApplications,
       occupiedRooms,
       waitingApproved,
+      waitingApprovedApplications,
       occupancyRate,
       availableRooms,
       approvalRate,
@@ -301,6 +327,28 @@ export default function OccupancyStatsSection() {
                 <p className="mt-2 text-sm text-[#667085]">
                   Approved applications with no recorded room assignment yet.
                 </p>
+                {stats.waitingApprovedApplications.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {stats.waitingApprovedApplications.slice(0, 5).map((application) => (
+                      <div
+                        key={application.id}
+                        className="rounded-xl border border-[#e6eaf3] bg-white px-3 py-2 text-sm text-[#475467]"
+                      >
+                        <span className="font-semibold text-[#17172f]">
+                          {getApplicationDisplayName(application)}
+                        </span>
+                        <span className="ml-2 text-xs text-[#98a2b3]">
+                          #{application.id}
+                        </span>
+                      </div>
+                    ))}
+                    {stats.waitingApprovedApplications.length > 5 && (
+                      <p className="text-xs text-[#98a2b3]">
+                        +{stats.waitingApprovedApplications.length - 5} more waiting students
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="rounded-2xl border border-[#eceff6] bg-[#f8f9fc] p-5">

@@ -18,6 +18,7 @@ import {
   Users,
   Clock,
   CheckCircle2,
+  CreditCard,
   XCircle,
   BarChart3,
   LayoutDashboard,
@@ -44,6 +45,37 @@ export interface User {
 interface HousingApplicationSummary {
   status: string;
   email?: string | null;
+  paid?: boolean;
+  payed?: boolean;
+  is_paid?: boolean;
+  isPayed?: boolean;
+  payment_status?: string | null;
+  paymentStatus?: string | null;
+}
+
+function isApplicationPaid(application: HousingApplicationSummary) {
+  const booleanValue = [
+    application.paid,
+    application.payed,
+    application.is_paid,
+    application.isPayed,
+  ].find((value) => typeof value === "boolean");
+
+  if (typeof booleanValue === "boolean") return booleanValue;
+
+  const normalizedStatus = (
+    application.payment_status ??
+    application.paymentStatus ??
+    application.status
+  )
+    ?.toLowerCase()
+    .trim();
+
+  return normalizedStatus
+    ? ["paid", "payed", "completed", "success", "successful", "succeeded"].includes(
+        normalizedStatus,
+      )
+    : false;
 }
 
 export default function HousingDashboard() {
@@ -64,6 +96,8 @@ export default function HousingDashboard() {
     total: 0,
     pending: 0,
     approved: 0,
+    approvedUnpaid: 0,
+    paid: 0,
     rejected: 0,
   });
 
@@ -101,10 +135,17 @@ export default function HousingDashboard() {
           method: "GET",
         })) || [];
 
+      const paid = apps.filter((app) => isApplicationPaid(app)).length;
+      const approvedUnpaid = apps.filter(
+        (app) => app.status === "approved" && !isApplicationPaid(app),
+      ).length;
+
       setStats({
         total: apps.length,
         pending: apps.filter((app) => app.status === "pending").length,
         approved: apps.filter((app) => app.status === "approved").length,
+        approvedUnpaid,
+        paid,
         rejected: apps.filter((app) => app.status === "rejected").length,
       });
     } catch (error) {
@@ -233,6 +274,13 @@ export default function HousingDashboard() {
       glow: "bg-emerald-500/10",
     },
     {
+      label: "Paid",
+      value: stats.paid,
+      icon: CreditCard,
+      color: "bg-sky-500",
+      glow: "bg-sky-500/10",
+    },
+    {
       label: "Rejected",
       value: stats.rejected,
       icon: XCircle,
@@ -322,11 +370,11 @@ export default function HousingDashboard() {
                 </div>
 
                 {/* Stat Cards */}
-                <div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+                <div className="mb-10 grid gap-6 md:grid-cols-2 xl:grid-cols-5">
                   {statCards.map((card) => (
                     <div
                       key={card.label}
-                      className="relative flex-1 overflow-hidden rounded-[28px] border border-white bg-white/70 p-6 shadow-sm backdrop-blur-md"
+                      className="relative min-w-0 overflow-hidden rounded-[28px] border border-white bg-white/70 p-6 shadow-sm backdrop-blur-md"
                     >
                       <div
                         className={`absolute -right-4 -top-4 h-20 w-20 rounded-full ${card.glow} blur-2xl`}
@@ -361,8 +409,8 @@ export default function HousingDashboard() {
                         Verification Progress
                       </h3>
                       <p className="text-xs text-[#98a2b3]">
-                        {stats.approved + stats.rejected} of {stats.total}{" "}
-                        reviewed
+                        {stats.approvedUnpaid + stats.paid + stats.rejected} of{" "}
+                        {stats.total} reviewed
                       </p>
                     </div>
                   </div>
@@ -373,7 +421,15 @@ export default function HousingDashboard() {
                         className="h-full bg-emerald-500 transition-all duration-1000"
                         style={{
                           width: stats.total
-                            ? `${(stats.approved / stats.total) * 100}%`
+                            ? `${(stats.approvedUnpaid / stats.total) * 100}%`
+                            : "0%",
+                        }}
+                      />
+                      <div
+                        className="h-full bg-sky-500 transition-all duration-1000"
+                        style={{
+                          width: stats.total
+                            ? `${(stats.paid / stats.total) * 100}%`
                             : "0%",
                         }}
                       />
@@ -392,6 +448,10 @@ export default function HousingDashboard() {
                     <div className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                       Approved
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-sky-500" />
+                      Paid
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full bg-rose-400" />

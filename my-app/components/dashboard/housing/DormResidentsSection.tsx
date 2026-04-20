@@ -198,35 +198,30 @@ export default function DormResidentsSection() {
               </div>
             </div>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+            <div className="mt-5 overflow-hidden rounded-[22px] border border-[#edf1f8] bg-[#f8faff]">
+              <div className="grid grid-cols-[120px_1fr] gap-4 border-b border-[#edf1f8] px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[#98a2b3]">
+                <p>Room</p>
+                <p>Residents</p>
+              </div>
               {block.rooms.map((room) => (
-                <article
+                <div
                   key={room.id}
-                  className="rounded-[24px] border border-[#edf1f8] bg-[#f8faff] p-5"
+                  className="grid grid-cols-[120px_1fr] gap-4 border-b border-[#edf1f8] px-4 py-3 last:border-b-0"
                 >
-                  <p className="text-base font-bold text-[#17172f]">
-                    Room {room.roomLabel}
+                  <p className="text-sm font-bold text-[#17172f]">
+                    {room.roomLabel}
                   </p>
 
                   {room.residents.length === 0 ? (
-                    <p className="mt-4 text-sm text-[#7d879b]">
+                    <p className="text-sm text-[#7d879b]">
                       No residents assigned
                     </p>
                   ) : (
-                    <div className="mt-4 space-y-3">
-                      {room.residents.map((resident, index) => (
-                        <div
-                          key={`${room.id}-${resident}-${index}`}
-                          className="rounded-2xl border border-white bg-white/90 px-4 py-3"
-                        >
-                          <p className="text-sm font-semibold text-[#17172f]">
-                            {resident}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
+                    <p className="text-sm leading-6 text-[#475467]">
+                      {room.residents.join(", ")}
+                    </p>
                   )}
-                </article>
+                </div>
               ))}
             </div>
           </div>
