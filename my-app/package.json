@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "dotenvx run -- next dev",
+    "build": "dotenvx run -- next build",
+    "start": "dotenvx run -- next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@dotenvx/dotenvx": "^1.61.1",
     "lucide-react": "^1.8.0",
     "next": "^16.2.4",
     "react": "19.2.0",
